@@ -1,9 +1,10 @@
-use futures::{stream::TryStreamExt, StreamExt};
-use genetlink::{GenetlinkError, GenetlinkHandle};
+use std::net::SocketAddr;
+
+use futures::stream::TryStreamExt;
 use netlink_packet_core::{NetlinkMessage, NLM_F_REQUEST};
 use netlink_packet_generic::GenlMessage;
 use netlink_packet_wireguard::{
-    nlas::{WgDeviceAttrs, WgPeer, WgPeerAttrs},
+    nlas::{WgAllowedIp, WgAllowedIpAttrs, WgDeviceAttrs, WgPeer, WgPeerAttrs},
     Wireguard, WireguardCmd,
 };
 use rand::Rng;
@@ -11,13 +12,14 @@ use rtnetlink::{
     packet::rtnl::constants,
     packet::{
         rtnl::link::nlas::{Info, InfoKind, Nla},
-        LinkMessage,
+        AF_INET, AF_INET6,
     },
 };
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ensure_link("wg0").await?;
+    ensure_wireguard("wg0").await?;
     Ok(())
 }
 
@@ -87,27 +89,48 @@ async fn ensure_link(name: &str) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-/*
-async fn _print_wg() -> Result<GenetlinkHandle, GenetlinkError> {
-    let (conn, mut handle, _) = genetlink::new_connection().unwrap();
-    tokio::spawn(conn);
-    let genlmsg: GenlMessage<Wireguard> = GenlMessage::from_payload(Wireguard {
+async fn ensure_wireguard(name: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let (gec, mut ge, _) = genetlink::new_connection().unwrap();
+    tokio::spawn(gec);
+    let msg = GenlMessage::from_payload(Wireguard {
         cmd: WireguardCmd::SetDevice,
         nlas: vec![
-            WgDeviceAttrs::IfName(IFACE_NAME.to_string()),
+            WgDeviceAttrs::Flags(netlink_packet_wireguard::constants::WGDEVICE_F_REPLACE_PEERS),
+            WgDeviceAttrs::IfName(name.to_string()),
             WgDeviceAttrs::PrivateKey(rand::thread_rng().gen::<[u8; 32]>()),
             WgDeviceAttrs::ListenPort(9999),
             WgDeviceAttrs::Fwmark(55),
-            WgDeviceAttrs::Flags(netlink_packet_wireguard::constants::WGDEVICE_F_REPLACE_PEERS),
             WgDeviceAttrs::Peers(vec![WgPeer(vec![
+                WgPeerAttrs::Flags(
+                    netlink_packet_wireguard::constants::WGPEER_F_REPLACE_ALLOWEDIPS,
+                ),
                 WgPeerAttrs::PublicKey(rand::thread_rng().gen::<[u8; 32]>()),
                 WgPeerAttrs::PersistentKeepalive(25),
+                WgPeerAttrs::Endpoint(std::net::SocketAddr::new(
+                    std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)),
+                    8080,
+                )),
+                WgPeerAttrs::AllowedIps(vec![
+                    WgAllowedIp(vec![
+                        WgAllowedIpAttrs::Family(AF_INET),
+                        WgAllowedIpAttrs::IpAddr(std::net::IpAddr::V4(std::net::Ipv4Addr::new(
+                            0, 0, 0, 0,
+                        ))),
+                        WgAllowedIpAttrs::Cidr(0),
+                    ]),
+                    WgAllowedIp(vec![
+                        WgAllowedIpAttrs::Family(AF_INET6),
+                        WgAllowedIpAttrs::IpAddr(std::net::IpAddr::V6(std::net::Ipv6Addr::new(
+                            0, 0, 0, 0, 0, 0, 0, 0,
+                        ))),
+                        WgAllowedIpAttrs::Cidr(0),
+                    ]),
+                ]),
             ])]),
         ],
     });
-    let mut nlmsg = NetlinkMessage::from(genlmsg);
+    let mut nlmsg = NetlinkMessage::from(msg);
     nlmsg.header.flags = NLM_F_REQUEST;
-    handle.notify(nlmsg).await?;
-    Ok(handle)
+    ge.notify(nlmsg).await?;
+    Ok(())
 }
-*/
