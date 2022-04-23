@@ -25,3 +25,5 @@ pub struct PeerEnvelope {
     pub peer: Peer,
     pub signature: String,
 }
+
+pub mod wireguard;
