@@ -5,7 +5,7 @@ use netlink_packet_wireguard::{
     Wireguard, WireguardCmd,
 };
 use rand::Rng;
-use ranet::wireguard::*;
+use ranet::wgctrl::*;
 use rtnetlink::{
     packet::rtnl::constants,
     packet::rtnl::link::nlas::{Info, InfoKind, Nla},
