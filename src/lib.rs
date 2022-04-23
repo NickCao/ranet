@@ -13,17 +13,8 @@ pub struct Endpoint {
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Peer {
     #[serde_as(as = "Base64")]
-    pub public_key: Vec<u8>,
-    #[serde_as(as = "Base64")]
-    pub operator_key: Vec<u8>,
-    pub remarks: std::collections::HashMap<String, String>,
+    pub public_key: [u8; 32],
     pub endpoints: Vec<Endpoint>,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct PeerEnvelope {
-    pub peer: Peer,
-    pub signature: String,
 }
 
 pub mod link;
