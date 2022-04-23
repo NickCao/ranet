@@ -17,5 +17,6 @@ pub struct Peer {
     pub endpoints: Vec<Endpoint>,
 }
 
+pub mod config;
 pub mod link;
 pub mod wgctrl;

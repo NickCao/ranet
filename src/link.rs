@@ -1,13 +1,13 @@
 use futures::stream::TryStreamExt;
+use rand::Rng;
 use rtnetlink::{
     packet::rtnl::constants,
     packet::rtnl::link::nlas::{Info, InfoKind, Nla},
 };
-use rand::Rng;
 
 pub struct LinkConfig {
     pub name: String,
-    pub master: u32,
+    pub master: String,
     pub group: u32,
     pub mtu: u32,
 }
@@ -57,7 +57,8 @@ pub async fn ensure_link(cfg: &LinkConfig) -> Result<(), Box<dyn std::error::Err
     msg.header.flags = constants::IFF_UP;
     msg.nlas
         .push(Nla::Info(vec![Info::Kind(InfoKind::Wireguard)]));
-    msg.nlas.push(Nla::Master(cfg.master));
+    let master = link_id_by_name(&rt, &cfg.master).await.unwrap();
+    msg.nlas.push(Nla::Master(master));
     msg.nlas.push(Nla::Group(cfg.group));
     msg.nlas.push(Nla::Mtu(cfg.mtu));
     req.execute().await?;
@@ -74,8 +75,12 @@ pub async fn ensure_link(cfg: &LinkConfig) -> Result<(), Box<dyn std::error::Err
         .any(|addr| addr.header.scope == rtnetlink::packet::rtnl::constants::RT_SCOPE_LINK)
     {
         let mut rng = rand::thread_rng();
-        let ip = std::net::Ipv6Addr::new(0xfe80, 0, 0, 0, rng.gen(), rng.gen(), rng.gen(), rng.gen());
-        rt.address().add(id, std::net::IpAddr::V6(ip), 64).execute().await?;
+        let ip =
+            std::net::Ipv6Addr::new(0xfe80, 0, 0, 0, rng.gen(), rng.gen(), rng.gen(), rng.gen());
+        rt.address()
+            .add(id, std::net::IpAddr::V6(ip), 64)
+            .execute()
+            .await?;
     }
     Ok(())
 }
