@@ -15,3 +15,4 @@ serde_json = "1.0"
 serde_with = { version = "1.12", features = [ "base64" ] }
 futures = "0.3.21"
 ipnetwork = "0.19.0"
+rand = "0.8.5"

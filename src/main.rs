@@ -1,13 +1,13 @@
 use futures::stream::TryStreamExt;
 use futures::StreamExt;
 use genetlink::{GenetlinkError, GenetlinkHandle};
-use ipnetwork::IpNetwork;
 use netlink_packet_core::{NetlinkMessage, NetlinkPayload, NLM_F_DUMP, NLM_F_REQUEST};
 use netlink_packet_generic::GenlMessage;
 use netlink_packet_wireguard::{
-    nlas::{WgAllowedIpAttrs, WgDeviceAttrs, WgPeerAttrs},
+    nlas::{WgAllowedIpAttrs, WgDeviceAttrs, WgPeer, WgPeerAttrs},
     Wireguard, WireguardCmd,
 };
+use rand::Rng;
 use rtnetlink::{
     packet::rtnl::constants,
     packet::rtnl::link::nlas::{Info, InfoKind, Nla},
@@ -58,82 +58,22 @@ async fn _print_wg() -> Result<GenetlinkHandle, GenetlinkError> {
     let (conn, mut handle, _) = genetlink::new_connection().unwrap();
     tokio::spawn(conn);
     let genlmsg: GenlMessage<Wireguard> = GenlMessage::from_payload(Wireguard {
-        cmd: WireguardCmd::GetDevice,
-        nlas: vec![WgDeviceAttrs::IfName("wg0".to_string())],
+        cmd: WireguardCmd::SetDevice,
+        nlas: vec![
+            WgDeviceAttrs::IfName(IFACE_NAME.to_string()),
+            WgDeviceAttrs::PrivateKey(rand::thread_rng().gen::<[u8; 32]>()),
+            WgDeviceAttrs::ListenPort(9999),
+            WgDeviceAttrs::Fwmark(55),
+            WgDeviceAttrs::Flags(netlink_packet_wireguard::constants::WGDEVICE_F_REPLACE_PEERS),
+            WgDeviceAttrs::Peers(vec![WgPeer(vec![
+                WgPeerAttrs::PublicKey(rand::thread_rng().gen::<[u8; 32]>()),
+                WgPeerAttrs::PersistentKeepalive(25),
+            ])]),
+        ],
     });
     let mut nlmsg = NetlinkMessage::from(genlmsg);
-    nlmsg.header.flags = NLM_F_REQUEST | NLM_F_DUMP;
-    let mut resp = handle.request(nlmsg).await?;
-    while let Some(result) = resp.next().await {
-        let rx_packet = result.unwrap();
-        match rx_packet.payload {
-            NetlinkPayload::InnerMessage(genlmsg) => {
-                print_wg_payload(genlmsg.payload);
-            }
-            NetlinkPayload::Error(e) => {
-                eprintln!("Error: {:?}", e.to_io());
-            }
-            _ => (),
-        };
-    }
+    nlmsg.header.flags = NLM_F_REQUEST;
+    handle.notify(nlmsg).await?;
     Ok(handle)
 }
 
-fn print_wg_payload(wg: Wireguard) {
-    for nla in &wg.nlas {
-        match nla {
-            WgDeviceAttrs::IfIndex(v) => println!("IfIndex: {}", v),
-            WgDeviceAttrs::IfName(v) => println!("IfName: {}", v),
-            WgDeviceAttrs::PrivateKey(_) => println!("PrivateKey: (hidden)"),
-            WgDeviceAttrs::PublicKey(v) => println!("PublicKey: {:?}", v),
-            WgDeviceAttrs::ListenPort(v) => println!("ListenPort: {}", v),
-            WgDeviceAttrs::Fwmark(v) => println!("Fwmark: {}", v),
-            WgDeviceAttrs::Peers(nlas) => {
-                for peer in nlas {
-                    println!("Peer: ");
-                    print_wg_peer(peer);
-                }
-            }
-            _ => (),
-        }
-    }
-}
-
-fn print_wg_peer(nlas: &[WgPeerAttrs]) {
-    for nla in nlas {
-        match nla {
-            WgPeerAttrs::PublicKey(v) => println!("  PublicKey: {:?}", v),
-            WgPeerAttrs::PresharedKey(_) => println!("  PresharedKey: (hidden)"),
-            WgPeerAttrs::Endpoint(v) => println!("  Endpoint: {}", v),
-            WgPeerAttrs::PersistentKeepalive(v) => println!("  PersistentKeepalive: {}", v),
-            WgPeerAttrs::LastHandshake(v) => println!("  LastHandshake: {:?}", v),
-            WgPeerAttrs::RxBytes(v) => println!("  RxBytes: {}", v),
-            WgPeerAttrs::TxBytes(v) => println!("  TxBytes: {}", v),
-            WgPeerAttrs::AllowedIps(nlas) => {
-                for ip in nlas {
-                    print_wg_allowedip(ip);
-                }
-            }
-            _ => (),
-        }
-    }
-}
-
-fn print_wg_allowedip(nlas: &[WgAllowedIpAttrs]) -> Option<()> {
-    let ipaddr = nlas.iter().find_map(|nla| {
-        if let WgAllowedIpAttrs::IpAddr(addr) = nla {
-            Some(*addr)
-        } else {
-            None
-        }
-    })?;
-    let cidr = nlas.iter().find_map(|nla| {
-        if let WgAllowedIpAttrs::Cidr(cidr) = nla {
-            Some(*cidr)
-        } else {
-            None
-        }
-    })?;
-    println!("  AllowedIp: {}/{}", ipaddr, cidr);
-    Some(())
-}
