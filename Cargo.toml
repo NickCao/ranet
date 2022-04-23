@@ -5,7 +5,13 @@ edition = "2021"
 
 [dependencies]
 tokio = { version = "1", features = [ "full" ] }
+genetlink = "0.2.1"
 rtnetlink = "0.9.1"
+netlink-packet-wireguard = "0.2.1"
+netlink-packet-generic = "0.3.0"
+netlink-packet-core = "0.4.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_with = { version = "1.12", features = [ "base64" ] }
+futures = "0.3.21"
+ipnetwork = "0.19.0"
