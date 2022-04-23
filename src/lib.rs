@@ -26,4 +26,5 @@ pub struct PeerEnvelope {
     pub signature: String,
 }
 
+pub mod link;
 pub mod wgctrl;
