@@ -3,6 +3,7 @@ use rtnetlink::{
     packet::rtnl::constants,
     packet::rtnl::link::nlas::{Info, InfoKind, Nla},
 };
+use rand::Rng;
 
 pub struct LinkConfig {
     pub name: String,
@@ -72,7 +73,9 @@ pub async fn ensure_link(cfg: &LinkConfig) -> Result<(), Box<dyn std::error::Err
         .flatten()
         .any(|addr| addr.header.scope == rtnetlink::packet::rtnl::constants::RT_SCOPE_LINK)
     {
-        // ll not found, generate a random one
+        let mut rng = rand::thread_rng();
+        let ip = std::net::Ipv6Addr::new(0xfe80, 0, 0, 0, rng.gen(), rng.gen(), rng.gen(), rng.gen());
+        rt.address().add(id, std::net::IpAddr::V6(ip), 64).execute().await?;
     }
     Ok(())
 }
