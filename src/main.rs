@@ -33,9 +33,8 @@ struct Down {}
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Args = argh::from_env();
-    let cfg: Config = serde_json::from_slice(&std::fs::read(args.config).unwrap()).unwrap();
-    let peers: Vec<ranet::Peer> =
-        serde_json::from_slice(&std::fs::read(cfg.registry).unwrap()).unwrap();
+    let cfg: Config = serde_json::from_slice(&std::fs::read(args.config)?)?;
+    let peers: Vec<ranet::Peer> = serde_json::from_slice(&std::fs::read(cfg.registry)?)?;
     assert_ne!(cfg.stale_group, 0);
     assert_ne!(cfg.active_group, 0);
 
@@ -43,10 +42,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Command::Up(_) => {
             let (conn, handle, _) = rtnetlink::new_connection().unwrap();
             tokio::spawn(conn);
-            group_change(&handle, cfg.active_group, cfg.stale_group)
-                .await
-                .unwrap();
-            let master = index_query(&handle, &cfg.vrf).await.unwrap().unwrap();
+            group_change(&handle, cfg.active_group, cfg.stale_group).await?;
+            let master = index_query(&handle, &cfg.vrf).await?.unwrap();
             for transport in cfg.transport {
                 for peer in &peers {
                     for endpoint in &peer.endpoints {
@@ -98,14 +95,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 }
             }
-            group_remove(&handle, cfg.stale_group).await.unwrap();
+            group_remove(&handle, cfg.stale_group).await?;
             Ok(())
         }
         Command::Down(_) => {
-            let (conn, handle, _) = rtnetlink::new_connection().unwrap();
+            let (conn, handle, _) = rtnetlink::new_connection()?;
             tokio::spawn(conn);
-            group_remove(&handle, cfg.stale_group).await.unwrap();
-            group_remove(&handle, cfg.active_group).await.unwrap();
+            group_remove(&handle, cfg.stale_group).await?;
+            group_remove(&handle, cfg.active_group).await?;
             Ok(())
         }
     }
