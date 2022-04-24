@@ -1,8 +1,8 @@
-## ranet - redundant array of network
+## ranet - redundant array of networks
 
 #### About
 
-ranet, acronym for redundant array of network, is the missing piece of the puzzle, for using wireguard to create distributed overlay networks. It serves the purpose by creating point to point tunnels between all participants, forming fully-meshed link-local connectivity. This is actually a rewrite of a previous project, [RAIT](https://gitlab.com/NickCao/RAIT), to address some shortcomings in its design, and, RIIR.
+ranet, acronym for redundant array of networks, is the missing piece of the puzzle, for using wireguard to create distributed overlay networks. It serves the purpose by creating point to point tunnels between all participants, forming fully-meshed link-local connectivity. This is actually a rewrite of a previous project, [RAIT](https://gitlab.com/NickCao/RAIT), to address some shortcomings in its design, and, RIIR.
 
 #### Design
 

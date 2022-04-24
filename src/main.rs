@@ -8,7 +8,7 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use x25519_dalek::{PublicKey, StaticSecret};
 
 #[derive(FromArgs)]
-/// ranet - redundant array of inexpensive tunnels
+/// ranet - redundant array of networks
 struct Args {
     /// path to config
     #[argh(option, short = 'c')]
