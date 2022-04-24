@@ -46,3 +46,49 @@ Due to technical limitation of wireguard, namely crypto routing, it struggles to
   }
 }
 ```
+
+#### Registry
+
+The registry is a json array containing information of mesh participants. `ranet meta` can be used to generate the section for the local node.
+```json
+[
+  {
+    "public_key": "QFoyiE5SPwtLA9sYcWcUDXi+9PKofG1IiQaPXjQaEXU=",
+    "endpoints": [
+      {
+        "send_port": 50153,
+        "address_family": "ip4",
+        "address": "example.com"
+      },
+      {
+        "send_port": 50154,
+        "address_family": "ip6",
+        "address": "example.com"
+      }
+    ],
+    "remarks": {
+      "location": "earth",
+      "operator": "human"
+    }
+  },
+  {
+    "public_key": "mKEafz5SJTn1foRN5KvxpS62j4+ye8zepGGAljkfZ38",
+    "endpoints": [
+      {
+        "send_port": 50155,
+        "address_family": "ip4",
+        "address": "example.org"
+      },
+      {
+        "send_port": 50156,
+        "address_family": "ip6",
+        "address": ""
+      }
+    ],
+    "remarks": {
+      "location": "mars",
+      "operator": "martian"
+    }
+  }
+]
+```
