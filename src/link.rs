@@ -32,6 +32,15 @@ impl LinkRequest {
     }
 }
 
+pub async fn remove_link_by_group(group: u32) {
+    let (rtc, rt, _) = rtnetlink::new_connection().unwrap();
+    tokio::spawn(rtc);
+    let mut req = rt.link().del(0);
+    let msg = req.message_mut();
+    msg.nlas.push(Nla::Group(group));
+    req.execute().await.unwrap();
+}
+
 async fn link_id_by_name(handle: &rtnetlink::Handle, name: &str) -> Option<u32> {
     let mut links = handle.link().get().match_name(name.to_string()).execute();
     // FIXME: check error

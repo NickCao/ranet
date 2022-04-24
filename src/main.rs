@@ -39,6 +39,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     match args.command {
         Command::Up(_) => {
             for transport in cfg.transport {
+                assert_ne!(transport.ifgroup, 0);
                 for peer in &peers {
                     for endpoint in &peer.endpoints {
                         if transport.address_family != endpoint.address_family {
@@ -88,6 +89,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             Ok(())
         }
-        Command::Down(_) => Ok(()),
+        Command::Down(_) => {
+            for transport in cfg.transport {
+                assert_ne!(transport.ifgroup, 0);
+                remove_link_by_group(transport.ifgroup).await;
+            }
+            Ok(())
+        }
     }
 }
