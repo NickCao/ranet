@@ -38,9 +38,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         serde_json::from_slice(&std::fs::read(cfg.registry).unwrap()).unwrap();
     assert_ne!(cfg.stale_group, 0);
     assert_ne!(cfg.active_group, 0);
+
     match args.command {
         Command::Up(_) => {
-            change_link_group(cfg.active_group, cfg.stale_group)
+            let (conn, handle, _) = rtnetlink::new_connection().unwrap();
+            tokio::spawn(conn);
+            change_link_group(&handle, cfg.active_group, cfg.stale_group)
                 .await
                 .unwrap();
             for transport in cfg.transport {
@@ -91,12 +94,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 }
             }
-            remove_link_by_group(cfg.stale_group).await;
+            remove_link_group(&handle, cfg.stale_group).await;
             Ok(())
         }
         Command::Down(_) => {
-            remove_link_by_group(cfg.stale_group).await;
-            remove_link_by_group(cfg.active_group).await;
+            let (conn, handle, _) = rtnetlink::new_connection().unwrap();
+            tokio::spawn(conn);
+            remove_link_group(&handle, cfg.stale_group).await;
+            remove_link_group(&handle, cfg.active_group).await;
             Ok(())
         }
     }
