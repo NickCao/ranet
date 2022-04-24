@@ -1,4 +1,5 @@
 use futures::stream::TryStreamExt;
+use netlink_packet_core::NLM_F_REQUEST;
 use rand::Rng;
 use rtnetlink::{
     packet::rtnl::constants,
@@ -32,13 +33,31 @@ impl LinkRequest {
     }
 }
 
+pub async fn change_link_group(old: u32, new: u32) {
+    let (rtc, rt, _) = rtnetlink::new_connection().unwrap();
+    tokio::spawn(rtc);
+    let mut resp = rt.link().get().execute();
+    while let Ok(Some(link)) = resp.try_next().await {
+        for nla in link.nlas.into_iter() {
+            if let Nla::Group(group) = nla {
+                if group == old {
+                    let mut req = rt.link().set(link.header.index);
+                    let msg = req.message_mut();
+                    msg.nlas.push(Nla::Group(new));
+                    req.execute().await.unwrap();
+                }
+            }
+        }
+    }
+}
+
 pub async fn remove_link_by_group(group: u32) {
     let (rtc, rt, _) = rtnetlink::new_connection().unwrap();
     tokio::spawn(rtc);
     let mut req = rt.link().del(0);
     let msg = req.message_mut();
     msg.nlas.push(Nla::Group(group));
-    req.execute().await.unwrap();
+    req.execute().await;
 }
 
 async fn link_id_by_name(handle: &rtnetlink::Handle, name: &str) -> Option<u32> {

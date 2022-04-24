@@ -10,6 +10,8 @@ pub struct Config {
     pub private_key: [u8; 32],
     pub vrf: String,
     pub transport: Vec<Transport>,
+    pub stale_group: u32,
+    pub active_group: u32,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -18,7 +20,6 @@ pub struct Transport {
     pub send_port: u16,
     pub mtu: u32,
     pub ifprefix: String,
-    pub ifgroup: u32,
     pub fwmark: u32,
     pub random_port: bool,
 }

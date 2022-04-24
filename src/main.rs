@@ -36,10 +36,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cfg: Config = serde_json::from_slice(&std::fs::read(args.config).unwrap()).unwrap();
     let peers: Vec<ranet::Peer> =
         serde_json::from_slice(&std::fs::read(cfg.registry).unwrap()).unwrap();
+    assert_ne!(cfg.stale_group, 0);
+    assert_ne!(cfg.active_group, 0);
     match args.command {
         Command::Up(_) => {
+            change_link_group(cfg.active_group, cfg.stale_group).await;
             for transport in cfg.transport {
-                assert_ne!(transport.ifgroup, 0);
                 for peer in &peers {
                     for endpoint in &peer.endpoints {
                         if transport.address_family != endpoint.address_family {
@@ -67,7 +69,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         let name = format!("{}{}", transport.ifprefix, endpoint.send_port);
                         ensure_link(&LinkConfig {
                             name: name.to_string(),
-                            group: transport.ifgroup,
+                            group: cfg.active_group,
                             master: cfg.vrf.clone(),
                             mtu: transport.mtu,
                         })
@@ -87,13 +89,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 }
             }
+            remove_link_by_group(cfg.stale_group).await;
             Ok(())
         }
         Command::Down(_) => {
-            for transport in cfg.transport {
-                assert_ne!(transport.ifgroup, 0);
-                remove_link_by_group(transport.ifgroup).await;
-            }
+            remove_link_by_group(cfg.stale_group).await;
+            remove_link_by_group(cfg.active_group).await;
             Ok(())
         }
     }
