@@ -92,3 +92,38 @@ The registry is a json array containing information of mesh participants. `ranet
   }
 ]
 ```
+
+#### Routing
+The recommended routing protocol to use atop ranet is babel, as it has an extension called [Babel-RTT](https://arxiv.org/abs/1403.3488) which takes round trip times into route metric calculation. Despite that support for this particular extension in bird is still experimental and maintained in a [fork](https://github.com/tohojo/bird/tree/babel-rtt-01), it's in a quite usable state. A bird configutation for reference is shown below.
+```
+ipv6 sadr table sadr6;
+protocol device {
+  scan time 5;
+}
+protocol direct {
+  ipv6 sadr;
+  interface "ranet";
+}
+protocol kernel {
+  kernel table 200;
+  ipv6 sadr {
+    export all;
+    import none;
+  };
+}
+protocol babel ranet {
+  vrf "ranet";
+  ipv6 sadr {
+    export all;
+    import all;
+  };
+  randomize router id;
+  interface "ranet*" {
+    type tunnel;
+    rxcost 32;
+    hello interval 20 s;
+    rtt cost 1024;
+    rtt max 1024 ms;
+  };
+}
+```
