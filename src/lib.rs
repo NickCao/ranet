@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use serde_with::base64::Base64;
 use serde_with::serde_as;
@@ -15,6 +17,7 @@ pub struct Peer {
     #[serde_as(as = "Base64")]
     pub public_key: [u8; 32],
     pub endpoints: Vec<Endpoint>,
+    pub remarks: HashMap<String, String>,
 }
 
 pub mod config;
