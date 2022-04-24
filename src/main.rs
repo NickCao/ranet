@@ -40,7 +40,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match args.command {
         Command::Up(_) => {
-            let (conn, handle, _) = rtnetlink::new_connection().unwrap();
+            let (conn, handle, _) = rtnetlink::new_connection()?;
             tokio::spawn(conn);
             group_change(&handle, cfg.active_group, cfg.stale_group).await?;
             let master = index_query(&handle, &cfg.vrf).await?.unwrap();
