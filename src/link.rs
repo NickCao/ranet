@@ -32,7 +32,7 @@ impl LinkRequest {
     }
 }
 
-pub async fn change_link_group(
+pub async fn group_change(
     handle: &rtnetlink::Handle,
     old: u32,
     new: u32,
@@ -52,10 +52,7 @@ pub async fn change_link_group(
     Ok(())
 }
 
-pub async fn remove_link_group(
-    handle: &rtnetlink::Handle,
-    group: u32,
-) -> Result<(), rtnetlink::Error> {
+pub async fn group_remove(handle: &rtnetlink::Handle, group: u32) -> Result<(), rtnetlink::Error> {
     let mut req = handle.link().del(0);
     req.message_mut().nlas.push(Nla::Group(group));
     let resp = req.execute().await;
@@ -70,7 +67,7 @@ pub async fn remove_link_group(
     resp
 }
 
-async fn query_link_index(handle: &rtnetlink::Handle, name: &str) -> Option<u32> {
+async fn index_query(handle: &rtnetlink::Handle, name: &str) -> Option<u32> {
     let mut links = handle.link().get().match_name(name.to_string()).execute();
     // FIXME: check error
     if let Ok(Some(link)) = links.try_next().await {
@@ -80,8 +77,11 @@ async fn query_link_index(handle: &rtnetlink::Handle, name: &str) -> Option<u32>
     }
 }
 
-pub async fn ensure_link(handle: &rtnetlink::Handle, cfg: &LinkConfig) -> Result<(), Box<dyn std::error::Error>> {
-    let mut req = if let Some(id) = query_link_index(&handle, &cfg.name).await {
+pub async fn ensure(
+    handle: &rtnetlink::Handle,
+    cfg: &LinkConfig,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let mut req = if let Some(id) = index_query(&handle, &cfg.name).await {
         LinkRequest::Set(handle.link().set(id))
     } else {
         LinkRequest::Add(handle.link().add())
@@ -93,12 +93,12 @@ pub async fn ensure_link(handle: &rtnetlink::Handle, cfg: &LinkConfig) -> Result
     msg.header.flags = constants::IFF_UP;
     msg.nlas
         .push(Nla::Info(vec![Info::Kind(InfoKind::Wireguard)]));
-    let master = query_link_index(&handle, &cfg.master).await.unwrap();
+    let master = index_query(&handle, &cfg.master).await.unwrap();
     msg.nlas.push(Nla::Master(master));
     msg.nlas.push(Nla::Group(cfg.group));
     msg.nlas.push(Nla::Mtu(cfg.mtu));
     req.execute().await?;
-    let id = query_link_index(&handle, &cfg.name).await.unwrap();
+    let id = index_query(&handle, &cfg.name).await.unwrap();
     if !handle
         .address()
         .get()
@@ -113,7 +113,8 @@ pub async fn ensure_link(handle: &rtnetlink::Handle, cfg: &LinkConfig) -> Result
         let mut rng = rand::thread_rng();
         let ip =
             std::net::Ipv6Addr::new(0xfe80, 0, 0, 0, rng.gen(), rng.gen(), rng.gen(), rng.gen());
-        handle.address()
+        handle
+            .address()
             .add(id, std::net::IpAddr::V6(ip), 64)
             .execute()
             .await?;

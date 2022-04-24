@@ -43,7 +43,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Command::Up(_) => {
             let (conn, handle, _) = rtnetlink::new_connection().unwrap();
             tokio::spawn(conn);
-            change_link_group(&handle, cfg.active_group, cfg.stale_group)
+            group_change(&handle, cfg.active_group, cfg.stale_group)
                 .await
                 .unwrap();
             for transport in cfg.transport {
@@ -72,12 +72,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             Err(_) => lo,
                         };
                         let name = format!("{}{}", transport.ifprefix, endpoint.send_port);
-                        ensure_link(&handle, &LinkConfig {
-                            name: name.to_string(),
-                            group: cfg.active_group,
-                            master: cfg.vrf.clone(),
-                            mtu: transport.mtu,
-                        })
+                        ensure(
+                            &handle,
+                            &LinkConfig {
+                                name: name.to_string(),
+                                group: cfg.active_group,
+                                master: cfg.vrf.clone(),
+                                mtu: transport.mtu,
+                            },
+                        )
                         .await?;
                         ensure_wireguard(&WireguardConfig {
                             name: name.to_string(),
@@ -94,14 +97,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 }
             }
-            remove_link_group(&handle, cfg.stale_group).await.unwrap();
+            group_remove(&handle, cfg.stale_group).await.unwrap();
             Ok(())
         }
         Command::Down(_) => {
             let (conn, handle, _) = rtnetlink::new_connection().unwrap();
             tokio::spawn(conn);
-            remove_link_group(&handle, cfg.stale_group).await.unwrap();
-            remove_link_group(&handle, cfg.active_group).await.unwrap();
+            group_remove(&handle, cfg.stale_group).await.unwrap();
+            group_remove(&handle, cfg.active_group).await.unwrap();
             Ok(())
         }
     }
