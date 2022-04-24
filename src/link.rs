@@ -80,13 +80,11 @@ async fn query_link_index(handle: &rtnetlink::Handle, name: &str) -> Option<u32>
     }
 }
 
-pub async fn ensure_link(cfg: &LinkConfig) -> Result<(), Box<dyn std::error::Error>> {
-    let (rtc, rt, _) = rtnetlink::new_connection().unwrap();
-    tokio::spawn(rtc);
-    let mut req = if let Some(id) = query_link_index(&rt, &cfg.name).await {
-        LinkRequest::Set(rt.link().set(id))
+pub async fn ensure_link(handle: &rtnetlink::Handle, cfg: &LinkConfig) -> Result<(), Box<dyn std::error::Error>> {
+    let mut req = if let Some(id) = query_link_index(&handle, &cfg.name).await {
+        LinkRequest::Set(handle.link().set(id))
     } else {
-        LinkRequest::Add(rt.link().add())
+        LinkRequest::Add(handle.link().add())
     };
     if let LinkRequest::Add(_) = req {
         req.message().nlas.push(Nla::IfName(cfg.name.clone()));
@@ -95,13 +93,13 @@ pub async fn ensure_link(cfg: &LinkConfig) -> Result<(), Box<dyn std::error::Err
     msg.header.flags = constants::IFF_UP;
     msg.nlas
         .push(Nla::Info(vec![Info::Kind(InfoKind::Wireguard)]));
-    let master = query_link_index(&rt, &cfg.master).await.unwrap();
+    let master = query_link_index(&handle, &cfg.master).await.unwrap();
     msg.nlas.push(Nla::Master(master));
     msg.nlas.push(Nla::Group(cfg.group));
     msg.nlas.push(Nla::Mtu(cfg.mtu));
     req.execute().await?;
-    let id = query_link_index(&rt, &cfg.name).await.unwrap();
-    if !rt
+    let id = query_link_index(&handle, &cfg.name).await.unwrap();
+    if !handle
         .address()
         .get()
         .set_link_index_filter(id)
@@ -115,7 +113,7 @@ pub async fn ensure_link(cfg: &LinkConfig) -> Result<(), Box<dyn std::error::Err
         let mut rng = rand::thread_rng();
         let ip =
             std::net::Ipv6Addr::new(0xfe80, 0, 0, 0, rng.gen(), rng.gen(), rng.gen(), rng.gen());
-        rt.address()
+        handle.address()
             .add(id, std::net::IpAddr::V6(ip), 64)
             .execute()
             .await?;

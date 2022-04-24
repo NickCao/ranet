@@ -72,7 +72,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             Err(_) => lo,
                         };
                         let name = format!("{}{}", transport.ifprefix, endpoint.send_port);
-                        ensure_link(&LinkConfig {
+                        ensure_link(&handle, &LinkConfig {
                             name: name.to_string(),
                             group: cfg.active_group,
                             master: cfg.vrf.clone(),
