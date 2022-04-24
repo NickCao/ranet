@@ -2,7 +2,10 @@ use argh::FromArgs;
 use ranet::config::*;
 use ranet::link::*;
 use ranet::wgctrl::*;
+use ranet::Endpoint;
+use ranet::Peer;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use x25519_dalek::{PublicKey, StaticSecret};
 
 #[derive(FromArgs)]
 /// ranet - redundant array of inexpensive tunnels
@@ -19,6 +22,7 @@ struct Args {
 enum Command {
     Up(Up),
     Down(Down),
+    Meta(Meta),
 }
 
 #[derive(FromArgs, PartialEq, Debug)]
@@ -30,6 +34,11 @@ struct Up {}
 #[argh(subcommand, name = "down")]
 /// destroy the tunnels
 struct Down {}
+
+#[derive(FromArgs, PartialEq, Debug)]
+#[argh(subcommand, name = "meta")]
+/// export metadata
+struct Meta {}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -114,6 +123,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             // remove all interfaces
             group_remove(&handle, cfg.stale_group).await?;
             group_remove(&handle, cfg.active_group).await?;
+            Ok(())
+        }
+        Command::Meta(_) => {
+            serde_json::to_writer(
+                std::io::stdout(),
+                &Peer {
+                    public_key: PublicKey::from(&StaticSecret::from(cfg.private_key)).to_bytes(),
+                    endpoints: cfg
+                        .transport
+                        .iter()
+                        .map(|trans| Endpoint {
+                            address: trans.address.clone(),
+                            address_family: trans.address_family.clone(),
+                            send_port: trans.send_port,
+                        })
+                        .collect(),
+                    remarks: cfg.remarks,
+                },
+            )?;
             Ok(())
         }
     }

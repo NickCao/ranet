@@ -30,6 +30,8 @@ pub struct Config {
 pub struct Transport {
     /// address family, ip4 or ip6
     pub address_family: String,
+    /// address
+    pub address: String,
     /// wireguard send port
     pub send_port: u16,
     /// interface mtu

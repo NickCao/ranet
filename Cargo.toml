@@ -16,3 +16,4 @@ serde_with = { version = "1.12", features = [ "base64" ] }
 futures = "0.3.21"
 rand = "0.8.5"
 argh = "0.1.7"
+x25519-dalek = "1.2.0"
