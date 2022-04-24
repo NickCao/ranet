@@ -9,7 +9,7 @@ use rtnetlink::{
 
 pub struct LinkConfig {
     pub name: String,
-    pub master: String,
+    pub master: u32,
     pub group: u32,
     pub mtu: u32,
 }
@@ -71,7 +71,7 @@ pub async fn group_remove(handle: &rtnetlink::Handle, group: u32) -> Result<(), 
     }
 }
 
-async fn index_query(
+pub async fn index_query(
     handle: &rtnetlink::Handle,
     name: &str,
 ) -> Result<Option<u32>, rtnetlink::Error> {
@@ -104,11 +104,11 @@ pub async fn ensure(
     msg.header.flags = constants::IFF_UP;
     msg.nlas
         .push(Nla::Info(vec![Info::Kind(InfoKind::Wireguard)]));
-    let master = index_query(&handle, &cfg.master).await?.unwrap();
-    msg.nlas.push(Nla::Master(master));
+    msg.nlas.push(Nla::Master(cfg.master));
     msg.nlas.push(Nla::Group(cfg.group));
     msg.nlas.push(Nla::Mtu(cfg.mtu));
     req.execute().await?;
+    // FIXME: possible race condition
     let id = index_query(&handle, &cfg.name).await?.unwrap();
     if !handle
         .address()

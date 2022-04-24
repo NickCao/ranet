@@ -46,6 +46,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             group_change(&handle, cfg.active_group, cfg.stale_group)
                 .await
                 .unwrap();
+            let master = index_query(&handle, &cfg.vrf).await.unwrap().unwrap();
             for transport in cfg.transport {
                 for peer in &peers {
                     for endpoint in &peer.endpoints {
@@ -77,7 +78,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             &LinkConfig {
                                 name: name.to_string(),
                                 group: cfg.active_group,
-                                master: cfg.vrf.clone(),
+                                master,
                                 mtu: transport.mtu,
                             },
                         )
