@@ -33,22 +33,23 @@ impl LinkRequest {
     }
 }
 
-pub async fn change_link_group(old: u32, new: u32) {
+pub async fn change_link_group(old: u32, new: u32) -> Result<(), rtnetlink::Error> {
     let (rtc, rt, _) = rtnetlink::new_connection().unwrap();
     tokio::spawn(rtc);
     let mut resp = rt.link().get().execute();
-    while let Ok(Some(link)) = resp.try_next().await {
+    while let Some(link) = resp.try_next().await? {
         for nla in link.nlas.into_iter() {
             if let Nla::Group(group) = nla {
                 if group == old {
                     let mut req = rt.link().set(link.header.index);
                     let msg = req.message_mut();
                     msg.nlas.push(Nla::Group(new));
-                    req.execute().await.unwrap();
+                    req.execute().await?;
                 }
             }
         }
     }
+    Ok(())
 }
 
 pub async fn remove_link_by_group(group: u32) {

@@ -40,7 +40,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     assert_ne!(cfg.active_group, 0);
     match args.command {
         Command::Up(_) => {
-            change_link_group(cfg.active_group, cfg.stale_group).await;
+            change_link_group(cfg.active_group, cfg.stale_group)
+                .await
+                .unwrap();
             for transport in cfg.transport {
                 for peer in &peers {
                     for endpoint in &peer.endpoints {
