@@ -94,14 +94,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 }
             }
-            remove_link_group(&handle, cfg.stale_group).await;
+            remove_link_group(&handle, cfg.stale_group).await.unwrap();
             Ok(())
         }
         Command::Down(_) => {
             let (conn, handle, _) = rtnetlink::new_connection().unwrap();
             tokio::spawn(conn);
-            remove_link_group(&handle, cfg.stale_group).await;
-            remove_link_group(&handle, cfg.active_group).await;
+            remove_link_group(&handle, cfg.stale_group).await.unwrap();
+            remove_link_group(&handle, cfg.active_group).await.unwrap();
             Ok(())
         }
     }

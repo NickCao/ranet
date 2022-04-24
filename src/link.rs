@@ -1,5 +1,4 @@
 use futures::stream::TryStreamExt;
-use netlink_packet_core::NLM_F_REQUEST;
 use rand::Rng;
 use rtnetlink::{
     packet::rtnl::constants,
@@ -59,7 +58,16 @@ pub async fn remove_link_group(
 ) -> Result<(), rtnetlink::Error> {
     let mut req = handle.link().del(0);
     req.message_mut().nlas.push(Nla::Group(group));
-    req.execute().await
+    let resp = req.execute().await;
+    if let Err(rtnetlink::Error::NetlinkError(rtnetlink::packet::ErrorMessage {
+        // no such device
+        code: -19,
+        ..
+    })) = resp
+    {
+        return Ok(());
+    }
+    resp
 }
 
 async fn query_link_index(handle: &rtnetlink::Handle, name: &str) -> Option<u32> {
