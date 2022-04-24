@@ -1,8 +1,10 @@
 use futures::stream::TryStreamExt;
+use netlink_packet_core::ErrorMessage;
 use rand::Rng;
 use rtnetlink::{
     packet::rtnl::constants,
     packet::rtnl::link::nlas::{Info, InfoKind, Nla},
+    Error::NetlinkError,
 };
 
 pub struct LinkConfig {
@@ -11,6 +13,8 @@ pub struct LinkConfig {
     pub group: u32,
     pub mtu: u32,
 }
+
+const ERRNO_NO_SUCH_DEVICE: i32 = -19;
 
 enum LinkRequest {
     Add(rtnetlink::LinkAddRequest),
@@ -56,24 +60,31 @@ pub async fn group_remove(handle: &rtnetlink::Handle, group: u32) -> Result<(), 
     let mut req = handle.link().del(0);
     req.message_mut().nlas.push(Nla::Group(group));
     let resp = req.execute().await;
-    if let Err(rtnetlink::Error::NetlinkError(rtnetlink::packet::ErrorMessage {
-        // no such device
-        code: -19,
+    if let Err(NetlinkError(ErrorMessage {
+        code: ERRNO_NO_SUCH_DEVICE,
         ..
     })) = resp
     {
-        return Ok(());
+        Ok(())
+    } else {
+        resp
     }
-    resp
 }
 
-async fn index_query(handle: &rtnetlink::Handle, name: &str) -> Option<u32> {
+async fn index_query(
+    handle: &rtnetlink::Handle,
+    name: &str,
+) -> Result<Option<u32>, rtnetlink::Error> {
     let mut links = handle.link().get().match_name(name.to_string()).execute();
-    // FIXME: check error
-    if let Ok(Some(link)) = links.try_next().await {
-        Some(link.header.index)
+    let resp = links.try_next().await;
+    if let Err(NetlinkError(ErrorMessage {
+        code: ERRNO_NO_SUCH_DEVICE,
+        ..
+    })) = resp
+    {
+        Ok(None)
     } else {
-        None
+        Ok(resp?.map(|l| l.header.index))
     }
 }
 
@@ -81,7 +92,7 @@ pub async fn ensure(
     handle: &rtnetlink::Handle,
     cfg: &LinkConfig,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut req = if let Some(id) = index_query(&handle, &cfg.name).await {
+    let mut req = if let Some(id) = index_query(&handle, &cfg.name).await? {
         LinkRequest::Set(handle.link().set(id))
     } else {
         LinkRequest::Add(handle.link().add())
@@ -93,12 +104,12 @@ pub async fn ensure(
     msg.header.flags = constants::IFF_UP;
     msg.nlas
         .push(Nla::Info(vec![Info::Kind(InfoKind::Wireguard)]));
-    let master = index_query(&handle, &cfg.master).await.unwrap();
+    let master = index_query(&handle, &cfg.master).await?.unwrap();
     msg.nlas.push(Nla::Master(master));
     msg.nlas.push(Nla::Group(cfg.group));
     msg.nlas.push(Nla::Mtu(cfg.mtu));
     req.execute().await?;
-    let id = index_query(&handle, &cfg.name).await.unwrap();
+    let id = index_query(&handle, &cfg.name).await?.unwrap();
     if !handle
         .address()
         .get()
