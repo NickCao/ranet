@@ -92,7 +92,7 @@ pub async fn ensure(
     handle: &rtnetlink::Handle,
     cfg: &LinkConfig,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut req = if let Some(id) = index_query(&handle, &cfg.name).await? {
+    let mut req = if let Some(id) = index_query(handle, &cfg.name).await? {
         LinkRequest::Set(handle.link().set(id))
     } else {
         LinkRequest::Add(handle.link().add())
@@ -109,7 +109,7 @@ pub async fn ensure(
     msg.nlas.push(Nla::Mtu(cfg.mtu));
     req.execute().await?;
     // FIXME: possible race condition
-    let id = index_query(&handle, &cfg.name).await?.unwrap();
+    let id = index_query(handle, &cfg.name).await?.unwrap();
     if !handle
         .address()
         .get()
