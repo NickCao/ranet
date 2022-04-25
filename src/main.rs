@@ -67,6 +67,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         if transport.address_family != endpoint.address_family {
                             continue;
                         }
+                        if transport.send_port == endpoint.send_port {
+                            continue;
+                        }
                         let hosts = tokio::net::lookup_host((
                             endpoint.address.as_str(),
                             transport.send_port,
