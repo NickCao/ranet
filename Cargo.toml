@@ -19,3 +19,7 @@ argh = "0.1.7"
 x25519-dalek = "1.2.0"
 nix = { version = "0.24.1", features = [ "socket" ] }
 shadowsocks-service = "1.14.3"
+bytes = "1.1.0"
+socket2 = "0.4.4"
+log = "0.4"
+simple_logger = "2.1"

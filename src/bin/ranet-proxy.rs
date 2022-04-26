@@ -1,18 +1,19 @@
 use argh::FromArgs;
+use log::{info, warn};
 use nix::sys::socket::{setsockopt, sockopt::BindToDevice};
 use shadowsocks_service::shadowsocks::relay::socks5::{
     self, Address, Command, HandshakeRequest, HandshakeResponse, TcpRequestHeader,
-    TcpResponseHeader,
+    TcpResponseHeader, UdpAssociateHeader,
 };
 use std::ffi::OsString;
-use std::net::{Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
+use std::net::{IpAddr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
 use std::os::unix::prelude::AsRawFd;
-use tokio::net::{TcpListener, TcpSocket, TcpStream};
+use tokio::net::{TcpListener, TcpSocket, TcpStream, UdpSocket};
 
 #[derive(FromArgs)]
 /// ranet-proxy
 struct Args {
-    /// listen address
+    /// listen address (also used for UDP association)
     #[argh(option, short = 'l')]
     listen: SocketAddr,
     /// bind address
@@ -28,11 +29,14 @@ struct Args {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    simple_logger::init_with_level(log::Level::Debug)?;
     let args: Args = argh::from_env();
     let listener = TcpListener::bind(args.listen).await?;
+    info!("listening for socks5 connection on address {}", args.listen);
     while let Ok((incoming, _)) = listener.accept().await {
         tokio::spawn(process(
             incoming,
+            args.listen.ip(),
             args.bind,
             args.interface.clone(),
             args.prefix,
@@ -75,22 +79,25 @@ async fn resolve(addr: Address, prefix: Ipv6Addr) -> Result<SocketAddrV6, std::i
 
 async fn process(
     mut inbound: TcpStream,
+    listen: IpAddr,
     bind: Ipv6Addr,
     interface: OsString,
     prefix: Ipv6Addr,
 ) -> Result<(), std::io::Error> {
+    // handshake
     HandshakeRequest::read_from(&mut inbound).await?;
     HandshakeResponse::new(socks5::SOCKS5_AUTH_METHOD_NONE)
         .write_to(&mut inbound)
         .await?;
     let header = TcpRequestHeader::read_from(&mut inbound).await?;
-    println!(
-        "INFO: connection from {} to {}",
-        inbound.peer_addr()?,
-        header.address
-    );
+    // command
     match header.command {
         Command::TcpConnect => {
+            info!(
+                "TCP connect from {} to {}",
+                inbound.peer_addr()?,
+                header.address
+            );
             let addr = resolve(header.address, prefix).await?;
             let outbound = TcpSocket::new_v6()?;
             setsockopt(outbound.as_raw_fd(), BindToDevice, &interface)?;
@@ -105,9 +112,84 @@ async fn process(
             tokio::io::copy_bidirectional(&mut inbound, &mut conn).await?;
             Ok(())
         }
-        _ => Err(std::io::Error::new(
-            std::io::ErrorKind::Unsupported,
-            "command not implemented",
-        )),
+        Command::UdpAssociate => {
+            info!(
+                "UDP associate from {} via {}",
+                inbound.peer_addr()?,
+                header.address
+            );
+            let client = match header.address {
+                Address::SocketAddress(addr) => {
+                    let client = UdpSocket::bind((listen, 0)).await?;
+                    client.connect(addr).await?;
+                    Ok(client)
+                }
+                _ => Err(std::io::Error::new(
+                    std::io::ErrorKind::Unsupported,
+                    "client address must be sent",
+                )),
+            }?;
+            let server = socket2::Socket::new(socket2::Domain::IPV6, socket2::Type::DGRAM, None)?;
+            server.set_nonblocking(true)?;
+            setsockopt(server.as_raw_fd(), BindToDevice, &interface)?;
+            let bindaddr: SocketAddr = (bind, 0).into();
+            server.bind(&socket2::SockAddr::from(bindaddr))?;
+            let server = UdpSocket::from_std(server.into())?;
+            TcpResponseHeader::new(
+                socks5::Reply::Succeeded,
+                Address::SocketAddress(SocketAddr::from(client.local_addr()?)),
+            )
+            .write_to(&mut inbound)
+            .await?;
+            let mut sink = tokio::io::sink();
+            tokio::select!(
+                res = tokio::io::copy(&mut inbound, &mut sink) => res.map(|_| ()),
+                res = async {
+                    let mut buf = [0u8; 65536];
+                    while let Ok(n) = client.recv(&mut buf).await {
+                        let data = &buf[..n];
+                        let mut cur = std::io::Cursor::new(data);
+                        let header = UdpAssociateHeader::read_from(&mut cur).await?;
+                        if header.frag != 0 {
+                            return Err(std::io::Error::new(
+                                std::io::ErrorKind::Unsupported,
+                                "udp fragment is not supported",
+                            ));
+                        }
+                        let pos = cur.position() as usize;
+                        let payload = &data[pos..];
+                        server
+                            .send_to(payload, resolve(header.address, prefix).await?)
+                            .await.unwrap();
+                    }
+                    Ok(())
+                } => res,
+                res = async {
+                    let mut buf = [0u8; 65536];
+                    while let Ok((n, peer)) = server.recv_from(&mut buf).await {
+                        let data = &buf[..n];
+                        let header = UdpAssociateHeader::new(0, peer.into());
+                        let mut send_buf =
+                            bytes::BytesMut::with_capacity(header.serialized_len() + buf.len());
+                        header.write_to_buf(&mut send_buf);
+                        bytes::BufMut::put_slice(&mut send_buf, data);
+                        client.send(&send_buf).await?;
+                    }
+                    Ok(())
+                } => res,
+            )?;
+            Ok(())
+        }
+        cmd => {
+            warn!(
+                "unsupported command {:?} from {}",
+                cmd,
+                inbound.peer_addr()?
+            );
+            Err(std::io::Error::new(
+                std::io::ErrorKind::Unsupported,
+                "command not implemented",
+            ))
+        }
     }
 }
