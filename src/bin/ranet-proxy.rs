@@ -54,6 +54,25 @@ fn dns64(addr: SocketAddrV4, prefix: Ipv6Addr) -> SocketAddrV6 {
     )
 }
 
+async fn resolve(addr: Address, prefix: Ipv6Addr) -> Result<SocketAddrV6, std::io::Error> {
+    match addr {
+        Address::SocketAddress(SocketAddr::V6(addr)) => Ok(addr),
+        Address::SocketAddress(SocketAddr::V4(addr)) => Ok(dns64(addr, prefix)),
+        Address::DomainNameAddress(domain, port) => {
+            Ok(tokio::net::lookup_host((domain.as_str(), port))
+                .await?
+                .find_map(|addr| match addr {
+                    SocketAddr::V4(a) => Some(dns64(a, prefix)),
+                    SocketAddr::V6(a) => Some(a),
+                })
+                .ok_or(std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    "domain name resolves to no ip address",
+                ))?)
+        }
+    }
+}
+
 async fn process(
     mut inbound: TcpStream,
     bind: Ipv6Addr,
@@ -72,22 +91,7 @@ async fn process(
     );
     match header.command {
         Command::TcpConnect => {
-            let addr = match header.address {
-                Address::SocketAddress(SocketAddr::V6(addr)) => addr,
-                Address::SocketAddress(SocketAddr::V4(addr)) => dns64(addr, prefix),
-                Address::DomainNameAddress(domain, port) => {
-                    tokio::net::lookup_host((domain.as_str(), port))
-                        .await?
-                        .find_map(|addr| match addr {
-                            SocketAddr::V4(a) => Some(dns64(a, prefix)),
-                            SocketAddr::V6(a) => Some(a),
-                        })
-                        .ok_or(std::io::Error::new(
-                            std::io::ErrorKind::NotFound,
-                            "domain name resolves to no ip address",
-                        ))?
-                }
-            };
+            let addr = resolve(header.address, prefix).await?;
             let outbound = TcpSocket::new_v6()?;
             setsockopt(outbound.as_raw_fd(), BindToDevice, &interface)?;
             outbound.bind(SocketAddr::V6(SocketAddrV6::new(bind, 0, 0, 0)))?;
