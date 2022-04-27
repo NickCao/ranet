@@ -37,16 +37,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     while let Ok((incoming, _)) = listener.accept().await {
         let args = args.clone();
         tokio::spawn(async move {
-            let ret = process(
+            if let Err(err) = process(
                 incoming,
                 args.listen.ip(),
                 args.bind,
                 args.interface,
                 args.prefix,
             )
-            .await;
-            if ret.is_err() {
-                warn!("{}", ret.unwrap_err());
+            .await
+            {
+                warn!("{}", err);
             }
         });
     }
@@ -77,10 +77,12 @@ async fn resolve(addr: Address, prefix: Ipv6Addr) -> Result<SocketAddrV6, std::i
                     SocketAddr::V4(a) => Some(dns64(a, prefix)),
                     SocketAddr::V6(a) => Some(a),
                 })
-                .ok_or(std::io::Error::new(
-                    std::io::ErrorKind::NotFound,
-                    "domain name resolves to no ip address",
-                ))?)
+                .ok_or_else(|| {
+                    std::io::Error::new(
+                        std::io::ErrorKind::NotFound,
+                        "domain name resolves to no ip address",
+                    )
+                })?)
         }
     }
 }
@@ -136,7 +138,7 @@ async fn process(
             let mut conn = outbound.connect(SocketAddr::from(addr)).await?;
             TcpResponseHeader::new(
                 socks5::Reply::Succeeded,
-                Address::SocketAddress(SocketAddr::from(conn.local_addr()?)),
+                Address::SocketAddress(conn.local_addr()?),
             )
             .write_to(&mut inbound)
             .await?;
@@ -168,7 +170,7 @@ async fn process(
             let server = UdpSocket::from_std(server.into())?;
             TcpResponseHeader::new(
                 socks5::Reply::Succeeded,
-                Address::SocketAddress(SocketAddr::from(client.local_addr()?)),
+                Address::SocketAddress(client.local_addr()?),
             )
             .write_to(&mut inbound)
             .await?;
@@ -192,7 +194,7 @@ async fn process(
                         let payload = &data[pos..];
                         server
                             .send_to(payload, resolve(header.address, prefix).await?)
-                            .await.unwrap();
+                            .await?;
                     }
                     Ok(())
                 } => res,
