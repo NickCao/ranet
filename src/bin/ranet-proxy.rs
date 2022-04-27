@@ -1,12 +1,12 @@
 use argh::FromArgs;
-use log::{error, info, warn};
+use log::{info, warn};
 use nix::sys::socket::{setsockopt, sockopt::BindToDevice};
 use shadowsocks_service::shadowsocks::relay::socks5::{
     self, Address, Command, HandshakeRequest, HandshakeResponse, TcpRequestHeader,
     TcpResponseHeader, UdpAssociateHeader,
 };
 use std::ffi::OsString;
-use std::net::{IpAddr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
 use std::os::unix::prelude::AsRawFd;
 use tokio::io::AsyncWriteExt;
 use tokio::net::{TcpListener, TcpSocket, TcpStream, UdpSocket};
@@ -81,6 +81,29 @@ async fn resolve(addr: Address, prefix: Ipv6Addr) -> Result<SocketAddrV6, std::i
                     std::io::ErrorKind::NotFound,
                     "domain name resolves to no ip address",
                 ))?)
+        }
+    }
+}
+
+async fn reverse(addr: SocketAddr, prefix: Ipv6Addr) -> Address {
+    match addr {
+        SocketAddr::V4(addr) => Address::SocketAddress(SocketAddr::V4(addr)),
+        SocketAddr::V6(addr) => {
+            let prefix = prefix.segments();
+            let segments = addr.ip().segments();
+            if prefix[..6] == segments[..6] {
+                Address::SocketAddress(SocketAddr::V4(SocketAddrV4::new(
+                    Ipv4Addr::new(
+                        (segments[6] >> 8) as u8,
+                        segments[6] as u8,
+                        (segments[7] >> 8) as u8,
+                        segments[7] as u8,
+                    ),
+                    addr.port(),
+                )))
+            } else {
+                Address::SocketAddress(SocketAddr::V6(addr))
+            }
         }
     }
 }
@@ -177,8 +200,7 @@ async fn process(
                     let mut buf = [0u8; 65536];
                     while let Ok((n, peer)) = server.recv_from(&mut buf).await {
                         let data = &buf[..n];
-                        // FIXME: reverse translation
-                        let header = UdpAssociateHeader::new(0, peer.into());
+                        let header = UdpAssociateHeader::new(0, reverse(peer, prefix).await);
                         let mut send_buf = Vec::new();
                         let mut cur = std::io::Cursor::new(&mut send_buf);
                         header.write_to(&mut cur).await?;
