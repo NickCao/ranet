@@ -1194,7 +1194,6 @@ name = "ranet"
 version = "0.2.0"
 dependencies = [
  "argh",
- "bytes",
  "futures",
  "genetlink",
  "log",

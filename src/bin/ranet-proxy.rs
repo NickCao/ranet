@@ -8,6 +8,7 @@ use shadowsocks_service::shadowsocks::relay::socks5::{
 use std::ffi::OsString;
 use std::net::{IpAddr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
 use std::os::unix::prelude::AsRawFd;
+use tokio::io::AsyncWriteExt;
 use tokio::net::{TcpListener, TcpSocket, TcpStream, UdpSocket};
 
 #[derive(FromArgs)]
@@ -169,10 +170,10 @@ async fn process(
                     while let Ok((n, peer)) = server.recv_from(&mut buf).await {
                         let data = &buf[..n];
                         let header = UdpAssociateHeader::new(0, peer.into());
-                        let mut send_buf =
-                            bytes::BytesMut::with_capacity(header.serialized_len() + buf.len());
-                        header.write_to_buf(&mut send_buf);
-                        bytes::BufMut::put_slice(&mut send_buf, data);
+                        let mut send_buf = Vec::new();
+                        let mut cur = std::io::Cursor::new(&mut send_buf);
+                        header.write_to(&mut cur).await?;
+                        cur.write_all(data).await?;
                         client.send(&send_buf).await?;
                     }
                     Ok(())
