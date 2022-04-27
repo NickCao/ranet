@@ -1,5 +1,5 @@
 use argh::FromArgs;
-use log::{info, warn};
+use log::{error, info, warn};
 use nix::sys::socket::{setsockopt, sockopt::BindToDevice};
 use shadowsocks_service::shadowsocks::relay::socks5::{
     self, Address, Command, HandshakeRequest, HandshakeResponse, TcpRequestHeader,
@@ -11,7 +11,7 @@ use std::os::unix::prelude::AsRawFd;
 use tokio::io::AsyncWriteExt;
 use tokio::net::{TcpListener, TcpSocket, TcpStream, UdpSocket};
 
-#[derive(FromArgs)]
+#[derive(FromArgs, Clone)]
 /// ranet-proxy
 struct Args {
     /// listen address (also used for UDP association)
@@ -35,13 +35,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let listener = TcpListener::bind(args.listen).await?;
     info!("listening for socks5 connection on address {}", args.listen);
     while let Ok((incoming, _)) = listener.accept().await {
-        tokio::spawn(process(
-            incoming,
-            args.listen.ip(),
-            args.bind,
-            args.interface.clone(),
-            args.prefix,
-        ));
+        let args = args.clone();
+        tokio::spawn(async move {
+            let ret = process(
+                incoming,
+                args.listen.ip(),
+                args.bind,
+                args.interface,
+                args.prefix,
+            )
+            .await;
+            if ret.is_err() {
+                warn!("{}", ret.unwrap_err());
+            }
+        });
     }
     Ok(())
 }
@@ -147,7 +154,8 @@ async fn process(
                 res = tokio::io::copy(&mut inbound, &mut sink) => res.map(|_| ()),
                 res = async {
                     let mut buf = [0u8; 65536];
-                    while let Ok(n) = client.recv(&mut buf).await {
+                    while let Ok((n, peer)) = client.recv_from(&mut buf).await {
+                        client.connect(peer).await?;
                         let data = &buf[..n];
                         let mut cur = std::io::Cursor::new(data);
                         let header = UdpAssociateHeader::read_from(&mut cur).await?;
@@ -169,6 +177,7 @@ async fn process(
                     let mut buf = [0u8; 65536];
                     while let Ok((n, peer)) = server.recv_from(&mut buf).await {
                         let data = &buf[..n];
+                        // FIXME: reverse translation
                         let header = UdpAssociateHeader::new(0, peer.into());
                         let mut send_buf = Vec::new();
                         let mut cur = std::io::Cursor::new(&mut send_buf);
