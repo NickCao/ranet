@@ -46,13 +46,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cfg: Config = serde_json::from_slice(&std::fs::read(args.config)?)?;
     let peers: Vec<ranet::Peer> = serde_json::from_slice(&std::fs::read(cfg.registry)?)?;
     // stale group and active group must be set
-    assert_ne!(cfg.stale_group, 0);
-    assert_ne!(cfg.active_group, 0);
+    assert_ne!(
+        cfg.stale_group, 0,
+        "stale_group must be set to a non-zero number"
+    );
+    assert_ne!(
+        cfg.active_group, 0,
+        "active_group must be set to a non-zero number"
+    );
     // address family must be one of ip4 or ip6
-    assert!(cfg
-        .transport
-        .iter()
-        .all(|t| ["ip4", "ip6"].contains(&t.address_family.as_str())));
+    assert!(
+        cfg.transport
+            .iter()
+            .all(|t| ["ip4", "ip6"].contains(&t.address_family.as_str())),
+        "address_family must be either ip4 or ip6"
+    );
     match args.command {
         Command::Up(_) => {
             let (conn, handle, _) = rtnetlink::new_connection()?;
