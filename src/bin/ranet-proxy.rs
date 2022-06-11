@@ -22,7 +22,7 @@ struct Args {
     bind: Ipv6Addr,
     /// bind interface
     #[argh(option, short = 'i')]
-    interface: OsString,
+    interface: Option<OsString>,
     /// nat64 prefix
     #[argh(option, short = 'p')]
     prefix: Ipv6Addr,
@@ -114,7 +114,7 @@ async fn process(
     mut inbound: TcpStream,
     listen: IpAddr,
     bind: Ipv6Addr,
-    interface: OsString,
+    interface: Option<OsString>,
     prefix: Ipv6Addr,
 ) -> Result<(), std::io::Error> {
     // handshake
@@ -133,7 +133,9 @@ async fn process(
             );
             let addr = resolve(header.address, prefix).await?;
             let outbound = TcpSocket::new_v6()?;
-            setsockopt(outbound.as_raw_fd(), BindToDevice, &interface)?;
+            if let Some(interface) = interface {
+                setsockopt(outbound.as_raw_fd(), BindToDevice, &interface)?;
+            }
             outbound.bind(SocketAddr::V6(SocketAddrV6::new(bind, 0, 0, 0)))?;
             let mut conn = outbound.connect(SocketAddr::from(addr)).await?;
             TcpResponseHeader::new(
@@ -164,7 +166,9 @@ async fn process(
             }?;
             let server = socket2::Socket::new(socket2::Domain::IPV6, socket2::Type::DGRAM, None)?;
             server.set_nonblocking(true)?;
-            setsockopt(server.as_raw_fd(), BindToDevice, &interface)?;
+            if let Some(interface) = interface {
+                setsockopt(server.as_raw_fd(), BindToDevice, &interface)?;
+            }
             let bindaddr: SocketAddr = (bind, 0).into();
             server.bind(&socket2::SockAddr::from(bindaddr))?;
             let server = UdpSocket::from_std(server.into())?;
