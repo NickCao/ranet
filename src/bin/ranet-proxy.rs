@@ -3,13 +3,12 @@ use log::{info, warn};
 use nix::sys::socket::{setsockopt, sockopt::BindToDevice};
 use shadowsocks_service::shadowsocks::relay::socks5::{
     self, Address, Command, HandshakeRequest, HandshakeResponse, TcpRequestHeader,
-    TcpResponseHeader, UdpAssociateHeader,
+    TcpResponseHeader,
 };
 use std::ffi::OsString;
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
+use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
 use std::os::unix::prelude::AsRawFd;
-use tokio::io::AsyncWriteExt;
-use tokio::net::{TcpListener, TcpSocket, TcpStream, UdpSocket};
+use tokio::net::{TcpListener, TcpSocket, TcpStream};
 
 #[derive(FromArgs, Clone)]
 /// ranet-proxy
@@ -17,15 +16,15 @@ struct Args {
     /// listen address (also used for UDP association)
     #[argh(option, short = 'l')]
     listen: SocketAddr,
-    /// bind address
-    #[argh(option, short = 'b')]
-    bind: Ipv6Addr,
+    /// ipv4 bind address
+    #[argh(option)]
+    bind4: Option<Ipv4Addr>,
+    /// ipv6 bind address
+    #[argh(option)]
+    bind6: Option<Ipv6Addr>,
     /// bind interface
     #[argh(option, short = 'i')]
     interface: Option<OsString>,
-    /// nat64 prefix
-    #[argh(option, short = 'p')]
-    prefix: Ipv6Addr,
 }
 
 #[tokio::main]
@@ -37,15 +36,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     while let Ok((incoming, _)) = listener.accept().await {
         let args = args.clone();
         tokio::spawn(async move {
-            if let Err(err) = process(
-                incoming,
-                args.listen.ip(),
-                args.bind,
-                args.interface,
-                args.prefix,
-            )
-            .await
-            {
+            if let Err(err) = process(incoming, args.clone()).await {
                 warn!("{}", err);
             }
         });
@@ -53,30 +44,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn dns64(addr: SocketAddrV4, prefix: Ipv6Addr) -> SocketAddrV6 {
-    let seg4 = addr.ip().to_ipv6_mapped().segments();
-    let seg6 = prefix.segments();
-    SocketAddrV6::new(
-        Ipv6Addr::new(
-            seg6[0], seg6[1], seg6[2], seg6[3], seg6[4], seg6[5], seg4[6], seg4[7],
-        ),
-        addr.port(),
-        0,
-        0,
-    )
-}
-
-async fn resolve(addr: Address, prefix: Ipv6Addr) -> Result<SocketAddrV6, std::io::Error> {
+async fn resolve(addr: Address) -> Result<SocketAddr, std::io::Error> {
     match addr {
-        Address::SocketAddress(SocketAddr::V6(addr)) => Ok(addr),
-        Address::SocketAddress(SocketAddr::V4(addr)) => Ok(dns64(addr, prefix)),
+        Address::SocketAddress(addr) => Ok(addr),
         Address::DomainNameAddress(domain, port) => {
             Ok(tokio::net::lookup_host((domain.as_str(), port))
                 .await?
-                .find_map(|addr| match addr {
-                    SocketAddr::V4(a) => Some(dns64(a, prefix)),
-                    SocketAddr::V6(a) => Some(a),
-                })
+                .find_map(|addr| Some(addr))
                 .ok_or_else(|| {
                     std::io::Error::new(
                         std::io::ErrorKind::NotFound,
@@ -87,36 +61,7 @@ async fn resolve(addr: Address, prefix: Ipv6Addr) -> Result<SocketAddrV6, std::i
     }
 }
 
-async fn reverse(addr: SocketAddr, prefix: Ipv6Addr) -> Address {
-    match addr {
-        SocketAddr::V4(addr) => Address::SocketAddress(SocketAddr::V4(addr)),
-        SocketAddr::V6(addr) => {
-            let prefix = prefix.segments();
-            let segments = addr.ip().segments();
-            if prefix[..6] == segments[..6] {
-                Address::SocketAddress(SocketAddr::V4(SocketAddrV4::new(
-                    Ipv4Addr::new(
-                        (segments[6] >> 8) as u8,
-                        segments[6] as u8,
-                        (segments[7] >> 8) as u8,
-                        segments[7] as u8,
-                    ),
-                    addr.port(),
-                )))
-            } else {
-                Address::SocketAddress(SocketAddr::V6(addr))
-            }
-        }
-    }
-}
-
-async fn process(
-    mut inbound: TcpStream,
-    listen: IpAddr,
-    bind: Ipv6Addr,
-    interface: Option<OsString>,
-    prefix: Ipv6Addr,
-) -> Result<(), std::io::Error> {
+async fn process(mut inbound: TcpStream, args: Args) -> Result<(), std::io::Error> {
     // handshake
     HandshakeRequest::read_from(&mut inbound).await?;
     HandshakeResponse::new(socks5::SOCKS5_AUTH_METHOD_NONE)
@@ -131,12 +76,26 @@ async fn process(
                 inbound.peer_addr()?,
                 header.address
             );
-            let addr = resolve(header.address, prefix).await?;
-            let outbound = TcpSocket::new_v6()?;
-            if let Some(interface) = interface {
+            let addr = resolve(header.address).await?;
+            let outbound = match addr {
+                SocketAddr::V4(_) => TcpSocket::new_v4()?,
+                SocketAddr::V6(_) => TcpSocket::new_v6()?,
+            };
+            if let Some(interface) = args.interface {
                 setsockopt(outbound.as_raw_fd(), BindToDevice, &interface)?;
             }
-            outbound.bind(SocketAddr::V6(SocketAddrV6::new(bind, 0, 0, 0)))?;
+            match addr {
+                SocketAddr::V4(_) => {
+                    if let Some(bind) = args.bind4 {
+                        outbound.bind(SocketAddr::V4(SocketAddrV4::new(bind, 0)))?;
+                    }
+                }
+                SocketAddr::V6(_) => {
+                    if let Some(bind) = args.bind6 {
+                        outbound.bind(SocketAddr::V6(SocketAddrV6::new(bind, 0, 0, 0)))?;
+                    }
+                }
+            };
             let mut conn = outbound.connect(SocketAddr::from(addr)).await?;
             TcpResponseHeader::new(
                 socks5::Reply::Succeeded,
@@ -145,77 +104,6 @@ async fn process(
             .write_to(&mut inbound)
             .await?;
             tokio::io::copy_bidirectional(&mut inbound, &mut conn).await?;
-            Ok(())
-        }
-        Command::UdpAssociate => {
-            info!(
-                "UDP associate from {} via {}",
-                inbound.peer_addr()?,
-                header.address
-            );
-            let client = match header.address {
-                Address::SocketAddress(addr) => {
-                    let client = UdpSocket::bind((listen, 0)).await?;
-                    client.connect(addr).await?;
-                    Ok(client)
-                }
-                _ => Err(std::io::Error::new(
-                    std::io::ErrorKind::Unsupported,
-                    "client address must be sent",
-                )),
-            }?;
-            let server = socket2::Socket::new(socket2::Domain::IPV6, socket2::Type::DGRAM, None)?;
-            server.set_nonblocking(true)?;
-            if let Some(interface) = interface {
-                setsockopt(server.as_raw_fd(), BindToDevice, &interface)?;
-            }
-            let bindaddr: SocketAddr = (bind, 0).into();
-            server.bind(&socket2::SockAddr::from(bindaddr))?;
-            let server = UdpSocket::from_std(server.into())?;
-            TcpResponseHeader::new(
-                socks5::Reply::Succeeded,
-                Address::SocketAddress(client.local_addr()?),
-            )
-            .write_to(&mut inbound)
-            .await?;
-            let mut sink = tokio::io::sink();
-            tokio::select!(
-                res = tokio::io::copy(&mut inbound, &mut sink) => res.map(|_| ()),
-                res = async {
-                    let mut buf = [0u8; 65536];
-                    while let Ok((n, peer)) = client.recv_from(&mut buf).await {
-                        client.connect(peer).await?;
-                        let data = &buf[..n];
-                        let mut cur = std::io::Cursor::new(data);
-                        let header = UdpAssociateHeader::read_from(&mut cur).await?;
-                        if header.frag != 0 {
-                            return Err(std::io::Error::new(
-                                std::io::ErrorKind::Unsupported,
-                                "udp fragment is not supported",
-                            ));
-                        }
-                        let pos = cur.position() as usize;
-                        let payload = &data[pos..];
-                        server
-                            .send_to(payload, resolve(header.address, prefix).await?)
-                            .await?;
-                    }
-                    Ok(())
-                } => res,
-                res = async {
-                    let mut buf = [0u8; 65536];
-                    while let Ok((n, peer)) = server.recv_from(&mut buf).await {
-                        let data = &buf[..n];
-                        let header = UdpAssociateHeader::new(0, reverse(peer, prefix).await);
-                        let mut send_buf = Vec::new();
-                        let mut cur = std::io::Cursor::new(&mut send_buf);
-                        header.write_to(&mut cur).await?;
-                        cur.write_all(data).await?;
-                        client.send(&send_buf).await?;
-                    }
-                    Ok(())
-                } => res,
-            )?;
             Ok(())
         }
         cmd => {
