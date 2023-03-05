@@ -1,15 +1,15 @@
-pub struct Transport<'a> {
-    pub id: &'a str,
-    pub family: &'a str,
+pub struct Transport {
+    pub id: String,
+    pub family: String,
     pub port: u16,
-    pub updown: Option<&'a str>,
-    pub address: Option<&'a str>,
-    pub fwmark: Option<&'a str>,
+    pub updown: Option<String>,
+    pub address: Option<String>,
+    pub fwmark: Option<String>,
 }
 
-pub struct Endpoint<'a> {
-    pub id: &'a str,
-    pub family: &'a str,
+pub struct Endpoint {
+    pub id: String,
+    pub family: String,
     pub port: u16,
-    pub address: Option<&'a str>,
+    pub address: Option<String>,
 }
