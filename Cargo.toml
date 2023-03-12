@@ -15,3 +15,4 @@ nix = { version = "0.24.1", features = [ "socket" ] }
 socket2 = "0.4.4"
 log = "0.4"
 rsvici = "0.1.1"
+clap = { version = "4.1.8", features = ["derive"] }

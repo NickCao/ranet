@@ -1,6 +1,6 @@
-use std::{collections::HashMap, vec};
-
 use crate::config;
+use std::{collections::HashMap, vec};
+/*
 
 #[derive(Debug, serde::Serialize)]
 struct Child {
@@ -14,7 +14,7 @@ struct Child {
 }
 
 impl Child {
-    pub fn new(local: &config::Transport) -> Self {
+    pub fn new(local: &config::Endpoint) -> Self {
         Self {
             local_ts: vec!["0.0.0.0/0".to_string(), "::/0".to_string()],
             remote_ts: vec!["0.0.0.0/0".to_string(), "::/0".to_string()],
@@ -54,7 +54,8 @@ pub struct Connection {
 
 impl Connection {
     pub fn new(
-        local: &config::Transport,
+        &config: &config::Config,
+        local: &config::Endpoint,
         remote: &config::Endpoint,
         local_pubkey: &str,
         remote_pubkey: &str,
@@ -85,3 +86,4 @@ impl Connection {
         }
     }
 }
+*/
