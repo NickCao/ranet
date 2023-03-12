@@ -1,15 +1,22 @@
-pub struct Transport {
-    pub id: String,
-    pub family: String,
-    pub port: u16,
-    pub updown: Option<String>,
-    pub address: Option<String>,
-    pub fwmark: Option<String>,
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct Config {
+    pub private_key: String,
+    pub organization: String,
+    pub common_name: String,
+    pub endpoints: Vec<Endpoint>,
 }
 
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct Endpoint {
-    pub id: String,
-    pub family: String,
-    pub port: u16,
+    pub serial_number: String,
+    pub address_family: String,
     pub address: Option<String>,
+    pub port: u16,
+
+    pub updown: Option<String>,
+    pub fwmark: Option<String>,
 }
