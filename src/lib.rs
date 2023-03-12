@@ -1,2 +1,3 @@
-pub mod vici;
 pub mod config;
+pub mod registry;
+pub mod vici;
