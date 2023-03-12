@@ -1,7 +1,9 @@
+use ipnet::IpNet;
+use std::net::IpAddr;
 use std::net::ToSocketAddrs;
+use std::str::FromStr;
 
-/*
-fn expand_local_address(address_family: &str, address: &Option<String>) -> Vec<String> {
+pub fn expand_local_address(address_family: &str, address: &Option<String>) -> Vec<String> {
     if let Some(address) = address {
         if let Ok(address) = IpAddr::from_str(address) {
             // TODO: check if address family matches
@@ -11,18 +13,17 @@ fn expand_local_address(address_family: &str, address: &Option<String>) -> Vec<S
             // TODO: check if address family matches
             return vec![cidr.to_string()];
         }
-        lookup(address_family, address)
+        vec![]
     } else {
         match address_family {
             "ip4" => vec!["0.0.0.0/0".to_string()],
             "ip6" => vec!["::/0".to_string()],
-            _ => vec!["%any".to_string()],
+            _ => vec![],
         }
     }
 }
-*/
 
-fn expand_remote_address(address_family: &str, address: &Option<String>) -> Vec<String> {
+pub fn expand_remote_address(address_family: &str, address: &Option<String>) -> Vec<String> {
     let mut addresses = match address_family {
         "ip4" => vec!["0.0.0.0/0".to_string()],
         "ip6" => vec!["::/0".to_string()],
@@ -49,6 +50,32 @@ fn expand_remote_address(address_family: &str, address: &Option<String>) -> Vec<
 
 #[cfg(test)]
 mod test {
+    #[test]
+    fn expand_local_address() {
+        assert_eq!(
+            super::expand_local_address("invalid", &None),
+            Vec::<String>::new()
+        );
+        assert_eq!(super::expand_local_address("ip4", &None), vec!["0.0.0.0/0"]);
+        assert_eq!(super::expand_local_address("ip6", &None), vec!["::/0"]);
+        assert_eq!(
+            super::expand_local_address("ip4", &Some("127.0.0.1".to_string())),
+            vec!["127.0.0.1"]
+        );
+        assert_eq!(
+            super::expand_local_address("ip6", &Some("::1".to_string())),
+            vec!["::1"]
+        );
+        assert_eq!(
+            super::expand_local_address("ip4", &Some("10.0.0.0/24".to_string())),
+            vec!["10.0.0.0/24"]
+        );
+        assert_eq!(
+            super::expand_local_address("ip6", &Some("fd00::/8".to_string())),
+            vec!["fd00::/8"]
+        );
+    }
+
     #[test]
     fn expand_remote_address() {
         assert_eq!(

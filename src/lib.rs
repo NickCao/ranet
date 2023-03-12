@@ -1,7 +1,7 @@
-use std::{net::IpAddr, str::FromStr};
+
 
 use config::Config;
-use ipnet::IpNet;
+
 use registry::Registry;
 
 pub mod address;
@@ -11,7 +11,7 @@ pub mod key;
 pub mod registry;
 pub mod vici;
 
-pub fn up(config: &Config, registry: &Registry) -> std::io::Result<()> {
+pub fn up(config: &Config, _registry: &Registry) -> std::io::Result<()> {
     let public_key = key::private_key_to_public(config.private_key.as_bytes())?;
     dbg!(public_key);
     for endpoint in &config.endpoints {
