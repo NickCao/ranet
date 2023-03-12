@@ -52,11 +52,23 @@ mod test {
     #[test]
     fn expand_remote_address() {
         assert_eq!(
+            super::expand_remote_address("invalid", &None),
+            Vec::<String>::new()
+        );
+        assert_eq!(
             super::expand_remote_address("ip4", &None),
             vec!["0.0.0.0/0".to_string()]
         );
         assert_eq!(
             super::expand_remote_address("ip6", &None),
+            vec!["::/0".to_string()]
+        );
+        assert_eq!(
+            super::expand_remote_address("ip4", &Some("name.invalid".to_string())),
+            vec!["0.0.0.0/0".to_string()]
+        );
+        assert_eq!(
+            super::expand_remote_address("ip6", &Some("name.invalid".to_string())),
             vec!["::/0".to_string()]
         );
         assert_eq!(
