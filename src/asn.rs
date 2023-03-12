@@ -35,7 +35,7 @@ pub fn encode_identity(
 #[cfg(test)]
 mod test {
     #[test]
-    fn encode() {
+    fn encode_identity() {
         let identity = super::encode_identity("acme organization", "some server", "0").unwrap();
         assert_eq!(
             identity,
