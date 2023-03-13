@@ -22,29 +22,27 @@ enum Commands {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), ranet::vici::Error> {
     let args = Args::parse();
 
-    let file = std::fs::OpenOptions::new()
-        .read(true)
-        .open(&args.config)
-        .unwrap();
+    let file = std::fs::OpenOptions::new().read(true).open(&args.config)?;
 
-    let config: Config = serde_json::from_reader(file).unwrap();
+    let config: Config = serde_json::from_reader(file)?;
 
     match &args.command {
         Commands::Up => {
             let file = std::fs::OpenOptions::new()
                 .read(true)
-                .open(&args.registry)
-                .unwrap();
+                .open(&args.registry)?;
 
-            let registry: Registry = serde_json::from_reader(file).unwrap();
+            let registry: Registry = serde_json::from_reader(file)?;
 
-            reconcile(&config, &registry).await.unwrap();
+            reconcile(&config, &registry).await?;
         }
         Commands::Down => {
-            reconcile(&config, &vec![]).await.unwrap();
+            reconcile(&config, &vec![]).await?;
         }
     }
+
+    Ok(())
 }

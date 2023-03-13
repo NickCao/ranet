@@ -16,6 +16,8 @@ pub enum Error {
     FromUtf8(#[from] FromUtf8Error),
     #[error("openssl error")]
     Openssl(#[from] openssl::error::ErrorStack),
+    #[error("serde json error")]
+    Json(#[from] serde_json::Error),
 }
 
 pub struct Client {
