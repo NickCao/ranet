@@ -10,7 +10,7 @@ pub mod vici;
 
 pub fn up(config: &Config, registry: &Registry) -> std::io::Result<()> {
     let public_key = key::private_key_to_public(config.private_key.as_bytes())?;
-    dbg!(public_key);
+    let public_key = String::from_utf8(public_key).unwrap();
     for local in &config.endpoints {
         let local_id = asn::encode_identity(
             &config.organization,
@@ -18,9 +18,7 @@ pub fn up(config: &Config, registry: &Registry) -> std::io::Result<()> {
             &local.serial_number,
         )
         .unwrap();
-        dbg!(local_id);
         let local_addrs = address::expand_local_address(&local.address_family, &local.address);
-        dbg!(local_addrs);
         for organization in registry {
             for node in &organization.nodes {
                 if node.common_name == config.common_name {
@@ -33,10 +31,19 @@ pub fn up(config: &Config, registry: &Registry) -> std::io::Result<()> {
                         &remote.serial_number,
                     )
                     .unwrap();
-                    dbg!(remote_id);
                     let remote_addrs =
                         address::expand_remote_address(&remote.address_family, &remote.address);
-                    dbg!(remote_addrs);
+                    let conn = vici::Connection::new(
+                        local_addrs.clone(),
+                        remote_addrs.clone(),
+                        local_id.clone(),
+                        remote_id.clone(),
+                        &local,
+                        &remote,
+                        public_key.clone(),
+                        organization.public_key.clone(),
+                    );
+                    dbg!(conn);
                 }
             }
         }

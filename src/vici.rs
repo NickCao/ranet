@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::config;
+use crate::{config, registry};
 
 #[derive(Debug, serde::Serialize)]
 struct Child {
@@ -59,7 +59,7 @@ impl Connection {
         local_id: String,
         remote_id: String,
         local: &config::Endpoint,
-        remote: &config::Endpoint,
+        remote: &registry::Endpoint,
         local_pubkey: String,
         remote_pubkey: String,
     ) -> Self {
