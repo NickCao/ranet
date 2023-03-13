@@ -1,8 +1,7 @@
-use std::collections::HashMap;
-
 use config::Config;
 use registry::Registry;
 use sha2::{Digest, Sha256};
+use std::collections::HashMap;
 
 pub mod address;
 pub mod asn;
@@ -39,6 +38,9 @@ pub async fn up(config: &Config, registry: &Registry) -> std::io::Result<()> {
                     continue;
                 }
                 for remote in &node.endpoints {
+                    if remote.address_family != local.address_family {
+                        continue;
+                    }
                     let remote_id = asn::encode_identity(
                         &organization.organization,
                         &node.common_name,
