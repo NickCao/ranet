@@ -1,25 +1,26 @@
 use crate::{config, registry};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct Response {
     pub success: bool,
     pub errmsg: Option<String>,
 }
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct Version {
     pub daemon: String,
     pub version: String,
 }
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, Serialize)]
 pub struct Key {
     pub r#type: String,
     pub data: String,
 }
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, Serialize)]
 pub struct Child {
     pub local_ts: Vec<String>,
     pub remote_ts: Vec<String>,
@@ -44,14 +45,14 @@ impl Child {
     }
 }
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, Serialize)]
 pub struct Auth {
     pub auth: String,
     pub pubkeys: Vec<String>,
     pub id: String,
 }
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, Serialize)]
 pub struct Connection {
     pub version: u32,
     pub local_addrs: Vec<String>,
