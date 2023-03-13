@@ -1,4 +1,6 @@
-/*
+use std::collections::HashMap;
+
+use crate::config;
 
 #[derive(Debug, serde::Serialize)]
 struct Child {
@@ -52,16 +54,19 @@ pub struct Connection {
 
 impl Connection {
     pub fn new(
-        &config: &config::Config,
+        local_addrs: Vec<String>,
+        remote_addrs: Vec<String>,
+        local_id: String,
+        remote_id: String,
         local: &config::Endpoint,
         remote: &config::Endpoint,
-        local_pubkey: &str,
-        remote_pubkey: &str,
+        local_pubkey: String,
+        remote_pubkey: String,
     ) -> Self {
         Self {
             version: 2,
-            local_addrs: vec![],
-            remote_addrs: vec![],
+            local_addrs,
+            remote_addrs,
             local_port: local.port,
             remote_port: remote.port,
             encap: true,
@@ -72,16 +77,15 @@ impl Connection {
             if_id_out: "%unique".to_string(),
             local: Auth {
                 auth: "pubkey".to_string(),
-                pubkeys: vec![local_pubkey.to_string()],
-                id: local.id.clone(),
+                pubkeys: vec![local_pubkey],
+                id: local_id,
             },
             remote: Auth {
                 auth: "pubkey".to_string(),
-                pubkeys: vec![remote_pubkey.to_string()],
-                id: remote.id.clone(),
+                pubkeys: vec![remote_pubkey],
+                id: remote_id,
             },
             children: HashMap::from([("default".to_string(), Child::new(local))]),
         }
     }
 }
-*/
