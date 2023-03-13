@@ -11,17 +11,16 @@ pub mod registry;
 pub mod vici;
 
 pub async fn up(config: &Config, registry: &Registry) -> std::io::Result<()> {
-    let mut session = rsvici::unix::connect("/run/charon.vici").await.unwrap();
+    let mut client = vici::Client::connect("/run/charon.vici").await.unwrap();
 
-    let version: vici::Version = session.request("version", ()).await.unwrap();
+    let ver = client.version().await.unwrap();
 
     let req = semver::VersionReq::parse(">=5.9.6").unwrap();
-    let ver = semver::Version::parse(&version.version).unwrap();
-
     assert!(req.matches(&ver));
 
-    dbg!(version);
+    dbg!(ver);
 
+    /*
     let _: () = session
         .request(
             "load-key",
@@ -70,7 +69,7 @@ pub async fn up(config: &Config, registry: &Registry) -> std::io::Result<()> {
                         organization.public_key.clone(),
                     );
                     let name = hex::encode(Sha256::digest(format!("{}-{}", &local_id, &remote_id)));
-                    let resp: vici::Result = session
+                    let resp: vici::Status = session
                         .request(
                             "load-conn",
                             HashMap::<String, vici::Connection>::from([(name, conn)]),
@@ -81,5 +80,6 @@ pub async fn up(config: &Config, registry: &Registry) -> std::io::Result<()> {
             }
         }
     }
+    */
     Ok(())
 }

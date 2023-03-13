@@ -1,9 +1,42 @@
 use crate::{config, registry};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::{collections::HashMap, path::Path};
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("io error")]
+    IO(#[from] std::io::Error),
+    #[error("vici error")]
+    Vici(#[from] rsvici::Error),
+    #[error("semver error")]
+    Semver(#[from] semver::Error),
+}
+
+pub struct Client {
+    client: rsvici::Client,
+}
+
+impl Client {
+    pub async fn connect<P: AsRef<Path>>(path: P) -> Result<Self, Error> {
+        let client = rsvici::unix::connect(path).await?;
+        Ok(Self { client })
+    }
+    pub async fn version(&mut self) -> Result<semver::Version, Error> {
+        let v: Version = self.client.request("version", ()).await?;
+        let v = semver::Version::parse(&v.version)?;
+        Ok(v)
+    }
+}
 
 #[derive(Debug, Deserialize)]
-pub struct Result {
+struct Version {
+    version: String,
+}
+
+/*
+#[derive(Debug, Deserialize)]
+pub struct Status {
     pub success: bool,
     pub errmsg: Option<String>,
 }
@@ -11,12 +44,6 @@ pub struct Result {
 #[derive(Debug, Deserialize)]
 pub struct Conns {
     pub conns: Vec<String>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct Version {
-    pub daemon: String,
-    pub version: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -112,3 +139,4 @@ impl Connection {
         }
     }
 }
+*/
