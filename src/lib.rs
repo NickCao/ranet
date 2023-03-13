@@ -1,5 +1,8 @@
+use std::collections::HashMap;
+
 use config::Config;
 use registry::Registry;
+use sha2::{Digest, Sha256};
 
 pub mod address;
 pub mod asn;
@@ -8,7 +11,18 @@ pub mod key;
 pub mod registry;
 pub mod vici;
 
-pub fn up(config: &Config, registry: &Registry) -> std::io::Result<()> {
+pub async fn up(config: &Config, registry: &Registry) -> std::io::Result<()> {
+    let mut session = rsvici::unix::connect("/run/charon.vici").await.unwrap();
+    let _: () = session
+        .request(
+            "load-key",
+            vici::Key {
+                r#type: "any".to_string(),
+                data: config.private_key.clone(),
+            },
+        )
+        .await
+        .unwrap();
     let public_key = key::private_key_to_public(config.private_key.as_bytes())?;
     let public_key = String::from_utf8(public_key).unwrap();
     for local in &config.endpoints {
@@ -43,7 +57,14 @@ pub fn up(config: &Config, registry: &Registry) -> std::io::Result<()> {
                         public_key.clone(),
                         organization.public_key.clone(),
                     );
-                    dbg!(conn);
+                    let name = hex::encode(Sha256::digest(format!("{}-{}", &local_id, &remote_id)));
+                    let _: () = session
+                        .request(
+                            "load-conn",
+                            HashMap::<String, vici::Connection>::from([(name, conn)]),
+                        )
+                        .await
+                        .unwrap();
                 }
             }
         }

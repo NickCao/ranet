@@ -1,16 +1,21 @@
+use crate::{config, registry};
 use std::collections::HashMap;
 
-use crate::{config, registry};
+#[derive(Debug, serde::Serialize)]
+pub struct Key {
+    pub r#type: String,
+    pub data: String,
+}
 
 #[derive(Debug, serde::Serialize)]
-struct Child {
-    local_ts: Vec<String>,
-    remote_ts: Vec<String>,
-    updown: Option<String>,
-    mode: String,
-    dpd_action: String,
-    set_mark_out: Option<String>,
-    start_action: String,
+pub struct Child {
+    pub local_ts: Vec<String>,
+    pub remote_ts: Vec<String>,
+    pub updown: String,
+    pub mode: String,
+    pub dpd_action: String,
+    pub set_mark_out: String,
+    pub start_action: String,
 }
 
 impl Child {
@@ -18,38 +23,38 @@ impl Child {
         Self {
             local_ts: vec!["0.0.0.0/0".to_string(), "::/0".to_string()],
             remote_ts: vec!["0.0.0.0/0".to_string(), "::/0".to_string()],
-            updown: local.updown.clone(),
+            updown: local.updown.clone().unwrap_or_default(),
             mode: "tunnel".to_string(),
             dpd_action: "restart".to_string(),
-            set_mark_out: local.fwmark.clone(),
+            set_mark_out: local.fwmark.clone().unwrap_or_default(),
             start_action: "start".to_string(),
         }
     }
 }
 
 #[derive(Debug, serde::Serialize)]
-struct Auth {
-    auth: String,
-    pubkeys: Vec<String>,
-    id: String,
+pub struct Auth {
+    pub auth: String,
+    pub pubkeys: Vec<String>,
+    pub id: String,
 }
 
 #[derive(Debug, serde::Serialize)]
 pub struct Connection {
-    version: u32,
-    local_addrs: Vec<String>,
-    remote_addrs: Vec<String>,
-    local_port: u16,
-    remote_port: u16,
-    encap: bool,
-    dpd_delay: u64,
-    keyingtries: u32,
-    unique: String,
-    if_id_in: String,
-    if_id_out: String,
-    local: Auth,
-    remote: Auth,
-    children: HashMap<String, Child>,
+    pub version: u32,
+    pub local_addrs: Vec<String>,
+    pub remote_addrs: Vec<String>,
+    pub local_port: u16,
+    pub remote_port: u16,
+    pub encap: bool,
+    pub dpd_delay: u64,
+    pub keyingtries: u32,
+    pub unique: String,
+    pub if_id_in: String,
+    pub if_id_out: String,
+    pub local: Auth,
+    pub remote: Auth,
+    pub children: HashMap<String, Child>,
 }
 
 impl Connection {
