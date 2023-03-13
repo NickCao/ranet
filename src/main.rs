@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use ranet::{config::Config, registry::Registry, up};
+use ranet::{config::Config, reconcile, registry::Registry};
 
 /// ranet
 #[derive(Parser, Debug)]
@@ -25,20 +25,26 @@ enum Commands {
 async fn main() {
     let args = Args::parse();
 
+    let file = std::fs::OpenOptions::new()
+        .read(true)
+        .open(&args.config)
+        .unwrap();
+
+    let config: Config = serde_json::from_reader(file).unwrap();
+
     match &args.command {
         Commands::Up => {
-            let cfgfile = std::fs::OpenOptions::new()
-                .read(true)
-                .open(&args.config)
-                .unwrap();
-            let regfile = std::fs::OpenOptions::new()
+            let file = std::fs::OpenOptions::new()
                 .read(true)
                 .open(&args.registry)
                 .unwrap();
-            let config: Config = serde_json::from_reader(cfgfile).unwrap();
-            let registry: Registry = serde_json::from_reader(regfile).unwrap();
-            up(&config, &registry).await.unwrap();
+
+            let registry: Registry = serde_json::from_reader(file).unwrap();
+
+            reconcile(&config, &registry).await.unwrap();
         }
-        Commands::Down => {}
+        Commands::Down => {
+            reconcile(&config, &vec![]).await.unwrap();
+        }
     }
 }

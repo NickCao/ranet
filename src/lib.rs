@@ -1,6 +1,7 @@
 use config::Config;
 use registry::Registry;
 use sha2::{Digest, Sha256};
+use std::collections::HashSet;
 
 pub mod address;
 pub mod asn;
@@ -9,13 +10,16 @@ pub mod key;
 pub mod registry;
 pub mod vici;
 
-pub async fn up(config: &Config, registry: &Registry) -> std::io::Result<()> {
+pub async fn reconcile(config: &Config, registry: &Registry) -> std::io::Result<()> {
     let mut client = vici::Client::connect("/run/charon.vici").await.unwrap();
 
     client.load_key(&config.private_key).await.unwrap();
 
     let public_key = key::private_key_to_public(config.private_key.as_bytes())?;
     let public_key = String::from_utf8(public_key).unwrap();
+
+    let mut desired = HashSet::<String>::default();
+
     for local in &config.endpoints {
         let local_id = asn::encode_identity(
             &config.organization,
@@ -42,6 +46,7 @@ pub async fn up(config: &Config, registry: &Registry) -> std::io::Result<()> {
                     let remote_addrs =
                         address::expand_remote_address(&remote.address_family, &remote.address);
                     let name = hex::encode(Sha256::digest(format!("{}-{}", &local_id, &remote_id)));
+                    desired.insert(name.clone());
                     client
                         .load_conn(
                             &name,
@@ -66,5 +71,12 @@ pub async fn up(config: &Config, registry: &Registry) -> std::io::Result<()> {
             }
         }
     }
+
+    let current = HashSet::<String>::from_iter(client.get_conns().await.unwrap().into_iter());
+
+    for conn in current.difference(&desired) {
+        client.unload_conn(conn).await.unwrap();
+    }
+
     Ok(())
 }
