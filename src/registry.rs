@@ -87,7 +87,10 @@ mod test {
                             port: 4000
                         }
                     ],
-                    remarks: HashMap::from([("some".to_string(), "random note".to_string())])
+                    remarks: Some(HashMap::from([(
+                        "some".to_string(),
+                        "random note".to_string()
+                    )]))
                 }]
             }]
         )
