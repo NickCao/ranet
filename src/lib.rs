@@ -58,7 +58,7 @@ pub async fn up(config: &Config, registry: &Registry) -> std::io::Result<()> {
                         organization.public_key.clone(),
                     );
                     let name = hex::encode(Sha256::digest(format!("{}-{}", &local_id, &remote_id)));
-                    let _: () = session
+                    let resp: vici::Response = session
                         .request(
                             "load-conn",
                             HashMap::<String, vici::Connection>::from([(name, conn)]),

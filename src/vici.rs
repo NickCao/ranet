@@ -1,6 +1,12 @@
 use crate::{config, registry};
 use std::collections::HashMap;
 
+#[derive(Debug, serde::Deserialize)]
+pub struct Response {
+    pub success: bool,
+    pub errmsg: Option<String>,
+}
+
 #[derive(Debug, serde::Serialize)]
 pub struct Key {
     pub r#type: String,
