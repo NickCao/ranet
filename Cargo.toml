@@ -1,17 +1,12 @@
 [package]
 name = "ranet"
-version = "0.5.1"
+version = "0.6.0"
 edition = "2021"
 
 [dependencies]
 tokio = { version = "1", features = [ "macros", "rt-multi-thread", "fs" ] }
 serde = { version = "1.0", features = [ "derive" ] }
 serde_json = "1.0"
-serde_with = { version = "1.12", features = [ "base64" ] }
-futures = "0.3.21"
-rand = "0.8.5"
-argh = "0.1.7"
-nix = { version = "0.24.1", features = [ "socket" ] }
 socket2 = "0.4.4"
 log = "0.4"
 rsvici = "0.1.1"
@@ -22,7 +17,6 @@ rasn = "0.6.1"
 rasn-pkix = "0.6.0"
 hex = "0.4.3"
 ipnet = "2.7.1"
-dns-lookup = "1.0.8"
 sha2 = "0.10.6"
 semver = "1.0.17"
 thiserror = "1.0.39"
