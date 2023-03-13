@@ -1,7 +1,6 @@
 use config::Config;
 use registry::Registry;
 use sha2::{Digest, Sha256};
-use std::collections::HashMap;
 
 pub mod address;
 pub mod asn;
@@ -13,16 +12,8 @@ pub mod vici;
 pub async fn up(config: &Config, registry: &Registry) -> std::io::Result<()> {
     let mut client = vici::Client::connect("/run/charon.vici").await.unwrap();
 
-    let ver = client.version().await.unwrap();
-
-    let req = semver::VersionReq::parse(">=5.9.6").unwrap();
-    assert!(req.matches(&ver));
-
-    dbg!(ver);
-
     client.load_key(&config.private_key).await.unwrap();
 
-    /*
     let public_key = key::private_key_to_public(config.private_key.as_bytes())?;
     let public_key = String::from_utf8(public_key).unwrap();
     for local in &config.endpoints {
@@ -50,21 +41,24 @@ pub async fn up(config: &Config, registry: &Registry) -> std::io::Result<()> {
                     .unwrap();
                     let remote_addrs =
                         address::expand_remote_address(&remote.address_family, &remote.address);
-                    let conn = vici::Connection::new(
-                        local_addrs.clone(),
-                        remote_addrs.clone(),
-                        local_id.clone(),
-                        remote_id.clone(),
-                        &local,
-                        &remote,
-                        public_key.clone(),
-                        organization.public_key.clone(),
-                    );
                     let name = hex::encode(Sha256::digest(format!("{}-{}", &local_id, &remote_id)));
-                    let resp: vici::Status = session
-                        .request(
-                            "load-conn",
-                            HashMap::<String, vici::Connection>::from([(name, conn)]),
+                    client
+                        .load_conn(
+                            &name,
+                            vici::Endpoint {
+                                id: local_id.clone(),
+                                addrs: local_addrs.clone(),
+                                port: local.port,
+                                pubkey: public_key.clone(),
+                            },
+                            vici::Endpoint {
+                                id: remote_id,
+                                addrs: remote_addrs,
+                                port: remote.port,
+                                pubkey: organization.public_key.clone(),
+                            },
+                            local.updown.clone(),
+                            local.fwmark.clone(),
                         )
                         .await
                         .unwrap();
@@ -72,6 +66,5 @@ pub async fn up(config: &Config, registry: &Registry) -> std::io::Result<()> {
             }
         }
     }
-    */
     Ok(())
 }
