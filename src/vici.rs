@@ -2,6 +2,7 @@ use crate::{config, registry};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, path::Path};
 use thiserror::Error;
+use tokio::sync::mpsc::error;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -11,6 +12,8 @@ pub enum Error {
     Vici(#[from] rsvici::Error),
     #[error("semver error")]
     Semver(#[from] semver::Error),
+    #[error("protocol error: {0:?}")]
+    Protocol(Option<String>),
 }
 
 pub struct Client {
@@ -27,6 +30,14 @@ impl Client {
         let v = semver::Version::parse(&v.version)?;
         Ok(v)
     }
+    pub async fn load_key(&mut self, key: &str) -> Result<(), Error> {
+        let key = Key {
+            r#type: "any",
+            data: key,
+        };
+        let res: Status = self.client.request("load-key", key).await?;
+        res.parse()
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -34,23 +45,37 @@ struct Version {
     version: String,
 }
 
-/*
+#[derive(Debug, Serialize)]
+pub struct Key<'a, 'b> {
+    pub r#type: &'a str,
+    pub data: &'b str,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct Status {
     pub success: bool,
     pub errmsg: Option<String>,
 }
 
+impl Status {
+    fn parse(self) -> Result<(), Error> {
+        match self {
+            Status { success: true, .. } => Ok(()),
+            Status {
+                success: false,
+                errmsg,
+            } => Err(Error::Protocol(errmsg)),
+        }
+    }
+}
+
+/*
+
 #[derive(Debug, Deserialize)]
 pub struct Conns {
     pub conns: Vec<String>,
 }
 
-#[derive(Debug, Serialize)]
-pub struct Key {
-    pub r#type: String,
-    pub data: String,
-}
 
 #[derive(Debug, Serialize)]
 pub struct Child {
