@@ -27,7 +27,7 @@ pub async fn reconcile(config: &Config, registry: &Registry) -> std::io::Result<
             &local.serial_number,
         )
         .unwrap();
-        let local_addrs = address::expand_local_address(&local.address_family, &local.address);
+        let local_addrs = address::local(&local.address_family, &local.address);
         for organization in registry {
             for node in &organization.nodes {
                 if node.common_name == config.common_name {
@@ -43,8 +43,7 @@ pub async fn reconcile(config: &Config, registry: &Registry) -> std::io::Result<
                         &remote.serial_number,
                     )
                     .unwrap();
-                    let remote_addrs =
-                        address::expand_remote_address(&remote.address_family, &remote.address);
+                    let remote_addrs = address::remote(&remote.address_family, &remote.address);
                     let name = hex::encode(Sha256::digest(format!("{}-{}", &local_id, &remote_id)));
                     desired.insert(name.clone());
                     client
