@@ -1,8 +1,6 @@
-use crate::{config, registry};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, path::Path};
 use thiserror::Error;
-use tokio::sync::mpsc::error;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -38,6 +36,22 @@ impl Client {
         let res: Status = self.client.request("load-key", key).await?;
         res.parse()
     }
+    pub async fn load_conn(
+        &mut self,
+        name: &str,
+        local: Endpoint,
+        remote: Endpoint,
+        updown: Option<String>,
+        fwmark: Option<String>,
+    ) -> Result<(), Error> {
+        let v = self.version().await?;
+        let conn = Connection::new(&v, local, remote, updown, fwmark);
+        let resp: Status = self
+            .client
+            .request("load-conn", HashMap::from([(name, conn)]))
+            .await?;
+        resp.parse()
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -46,15 +60,15 @@ struct Version {
 }
 
 #[derive(Debug, Serialize)]
-pub struct Key<'a, 'b> {
-    pub r#type: &'a str,
-    pub data: &'b str,
+struct Key<'a, 'b> {
+    r#type: &'a str,
+    data: &'b str,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Status {
-    pub success: bool,
-    pub errmsg: Option<String>,
+struct Status {
+    success: bool,
+    errmsg: Option<String>,
 }
 
 impl Status {
@@ -75,93 +89,103 @@ impl Status {
 pub struct Conns {
     pub conns: Vec<String>,
 }
-
+*/
 
 #[derive(Debug, Serialize)]
-pub struct Child {
-    pub local_ts: Vec<String>,
-    pub remote_ts: Vec<String>,
-    pub updown: String,
-    pub mode: String,
-    pub dpd_action: String,
-    pub set_mark_out: String,
-    pub start_action: String,
-}
-
-impl Child {
-    pub fn new(local: &config::Endpoint) -> Self {
-        Self {
-            local_ts: vec!["0.0.0.0/0".to_string(), "::/0".to_string()],
-            remote_ts: vec!["0.0.0.0/0".to_string(), "::/0".to_string()],
-            updown: local.updown.clone().unwrap_or_default(),
-            mode: "tunnel".to_string(),
-            dpd_action: "restart".to_string(),
-            set_mark_out: local.fwmark.clone().unwrap_or_default(),
-            start_action: "start".to_string(),
-        }
-    }
+struct Child {
+    // esp_proposals
+    local_ts: Vec<String>,
+    remote_ts: Vec<String>,
+    updown: String,
+    mode: &'static str,
+    dpd_action: &'static str,
+    set_mark_out: String,
+    start_action: &'static str,
+    close_action: &'static str,
 }
 
 #[derive(Debug, Serialize)]
-pub struct Auth {
-    pub auth: String,
-    pub pubkeys: Vec<String>,
+struct Authentication {
+    auth: &'static str,
+    pubkeys: Vec<String>,
+    id: String,
+}
+
+#[derive(Debug, Serialize)]
+struct Connection {
+    version: u32,
+    local_addrs: Vec<String>,
+    remote_addrs: Vec<String>,
+    local_port: u16,
+    remote_port: u16,
+    // proposals
+    // dscp
+    encap: bool,
+    dpd_delay: u64,
+    keyingtries: u32,
+    unique: &'static str,
+    if_id_in: &'static str,
+    if_id_out: &'static str,
+    local: Authentication,
+    remote: Authentication,
+    children: HashMap<String, Child>,
+}
+
+pub struct Endpoint {
     pub id: String,
-}
-
-#[derive(Debug, Serialize)]
-pub struct Connection {
-    pub version: u32,
-    pub local_addrs: Vec<String>,
-    pub remote_addrs: Vec<String>,
-    pub local_port: u16,
-    pub remote_port: u16,
-    pub encap: bool,
-    pub dpd_delay: u64,
-    pub keyingtries: u32,
-    pub unique: String,
-    pub if_id_in: String,
-    pub if_id_out: String,
-    pub local: Auth,
-    pub remote: Auth,
-    pub children: HashMap<String, Child>,
+    pub addrs: Vec<String>,
+    pub port: u16,
+    pub pubkey: String,
 }
 
 impl Connection {
-    pub fn new(
-        local_addrs: Vec<String>,
-        remote_addrs: Vec<String>,
-        local_id: String,
-        remote_id: String,
-        local: &config::Endpoint,
-        remote: &registry::Endpoint,
-        local_pubkey: String,
-        remote_pubkey: String,
+    fn new(
+        version: &semver::Version,
+        local: Endpoint,
+        remote: Endpoint,
+        updown: Option<String>,
+        fwmark: Option<String>,
     ) -> Self {
+        let trap_available = semver::VersionReq::parse(">=5.9.6").unwrap();
         Self {
             version: 2,
-            local_addrs,
-            remote_addrs,
+            local_addrs: local.addrs,
+            remote_addrs: remote.addrs,
             local_port: local.port,
             remote_port: remote.port,
             encap: true,
             dpd_delay: 60,
             keyingtries: 0,
-            unique: "replace".to_string(),
-            if_id_in: "%unique".to_string(),
-            if_id_out: "%unique".to_string(),
-            local: Auth {
-                auth: "pubkey".to_string(),
-                pubkeys: vec![local_pubkey],
-                id: local_id,
+            unique: "replace",
+            if_id_in: "%unique",
+            if_id_out: "%unique",
+            local: Authentication {
+                auth: "pubkey",
+                pubkeys: vec![local.pubkey],
+                id: local.id,
             },
-            remote: Auth {
-                auth: "pubkey".to_string(),
-                pubkeys: vec![remote_pubkey],
-                id: remote_id,
+            remote: Authentication {
+                auth: "pubkey",
+                pubkeys: vec![remote.pubkey],
+                id: remote.id,
             },
-            children: HashMap::from([("default".to_string(), Child::new(local))]),
+            children: HashMap::from([(
+                "default".to_string(),
+                Child {
+                    local_ts: vec!["0.0.0.0/0".to_string(), "::/0".to_string()],
+                    remote_ts: vec!["0.0.0.0/0".to_string(), "::/0".to_string()],
+                    updown: updown.unwrap_or_default(),
+                    mode: "tunnel",
+                    dpd_action: "restart",
+                    set_mark_out: fwmark.unwrap_or_default(),
+                    start_action: if trap_available.matches(version) {
+                        "trap|start"
+                    } else {
+                        "start"
+                    },
+                    close_action: "start",
+                },
+            )]),
         }
     }
 }
-*/
