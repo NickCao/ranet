@@ -26,8 +26,8 @@ fn main() {
 
     match &args.command {
         Commands::Up => {
-            let cfgfile = std::fs::OpenOptions::new().open(&args.config).unwrap();
-            let regfile = std::fs::OpenOptions::new().open(&args.registry).unwrap();
+            let cfgfile = std::fs::OpenOptions::new().read(true).open(&args.config).unwrap();
+            let regfile = std::fs::OpenOptions::new().read(true).open(&args.registry).unwrap();
             let config: Config = serde_json::from_reader(cfgfile).unwrap();
             let registry: Registry = serde_json::from_reader(regfile).unwrap();
             up(&config, &registry).unwrap();
