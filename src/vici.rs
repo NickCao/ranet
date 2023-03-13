@@ -7,6 +7,12 @@ pub struct Response {
     pub errmsg: Option<String>,
 }
 
+#[derive(Debug, serde::Deserialize)]
+pub struct Version {
+    pub daemon: String,
+    pub version: String,
+}
+
 #[derive(Debug, serde::Serialize)]
 pub struct Key {
     pub r#type: String,

@@ -12,6 +12,16 @@ pub mod vici;
 
 pub async fn up(config: &Config, registry: &Registry) -> std::io::Result<()> {
     let mut session = rsvici::unix::connect("/run/charon.vici").await.unwrap();
+
+    let version: vici::Version = session.request("version", ()).await.unwrap();
+
+    let req = semver::VersionReq::parse(">=5.9.6").unwrap();
+    let ver = semver::Version::parse(&version.version).unwrap();
+
+    assert!(req.matches(&ver));
+
+    dbg!(version);
+
     let _: () = session
         .request(
             "load-key",
