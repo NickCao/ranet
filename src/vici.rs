@@ -3,9 +3,14 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[derive(Debug, Deserialize)]
-pub struct Response {
+pub struct Result {
     pub success: bool,
     pub errmsg: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Conns {
+    pub conns: Vec<String>,
 }
 
 #[derive(Debug, Deserialize)]
