@@ -52,6 +52,14 @@ impl Client {
             .await?;
         resp.parse()
     }
+    pub async fn get_conns(&mut self) -> Result<Vec<String>, Error> {
+        let res: Conns = self.client.request("get-conns", ()).await?;
+        Ok(res.conns)
+    }
+    pub async fn unload_conn(&mut self, name: &str) -> Result<(), Error> {
+        let res: Status = self.client.request("unload-conn", Unload { name }).await?;
+        res.parse()
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -83,13 +91,15 @@ impl Status {
     }
 }
 
-/*
-
 #[derive(Debug, Deserialize)]
-pub struct Conns {
-    pub conns: Vec<String>,
+struct Conns {
+    conns: Vec<String>,
 }
-*/
+
+#[derive(Debug, Serialize)]
+struct Unload<'a> {
+    name: &'a str,
+}
 
 #[derive(Debug, Serialize)]
 struct Child {
