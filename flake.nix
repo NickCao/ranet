@@ -20,6 +20,7 @@
             };
             nativeBuildInputs = [ pkgs.pkg-config ];
             buildInputs = [ pkgs.openssl ];
+            checkFlags = [ "--skip=address::test::remote" ];
           };
         }
       );
