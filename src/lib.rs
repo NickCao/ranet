@@ -20,17 +20,9 @@ pub async fn up(config: &Config, registry: &Registry) -> std::io::Result<()> {
 
     dbg!(ver);
 
+    client.load_key(&config.private_key).await.unwrap();
+
     /*
-    let _: () = session
-        .request(
-            "load-key",
-            vici::Key {
-                r#type: "any".to_string(),
-                data: config.private_key.clone(),
-            },
-        )
-        .await
-        .unwrap();
     let public_key = key::private_key_to_public(config.private_key.as_bytes())?;
     let public_key = String::from_utf8(public_key).unwrap();
     for local in &config.endpoints {
