@@ -34,7 +34,7 @@ ranet, acronym for redundant array of networks, forms full mesh IPSec connectivi
 #### Registry
 
 The registry is a json array containing information of mesh participants.
-```json
+```json5
 [
   {
     "public_key": "<PEM encoded public key>",
