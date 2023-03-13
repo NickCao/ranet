@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, path::Path};
+use std::{collections::HashMap, path::Path, string::FromUtf8Error};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -12,6 +12,10 @@ pub enum Error {
     Semver(#[from] semver::Error),
     #[error("protocol error: {0:?}")]
     Protocol(Option<String>),
+    #[error("from utf8 error")]
+    FromUtf8(#[from] FromUtf8Error),
+    #[error("openssl error")]
+    Openssl(#[from] openssl::error::ErrorStack),
 }
 
 pub struct Client {

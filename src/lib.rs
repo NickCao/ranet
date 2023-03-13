@@ -10,13 +10,13 @@ pub mod key;
 pub mod registry;
 pub mod vici;
 
-pub async fn reconcile(config: &Config, registry: &Registry) -> std::io::Result<()> {
-    let mut client = vici::Client::connect("/run/charon.vici").await.unwrap();
+pub async fn reconcile(config: &Config, registry: &Registry) -> Result<(), vici::Error> {
+    let mut client = vici::Client::connect("/run/charon.vici").await?;
 
-    client.load_key(&config.private_key).await.unwrap();
+    client.load_key(&config.private_key).await?;
 
     let public_key = key::private_key_to_public(config.private_key.as_bytes())?;
-    let public_key = String::from_utf8(public_key).unwrap();
+    let public_key = String::from_utf8(public_key)?;
 
     let mut desired = HashSet::<String>::default();
 
@@ -25,8 +25,7 @@ pub async fn reconcile(config: &Config, registry: &Registry) -> std::io::Result<
             &config.organization,
             &config.common_name,
             &local.serial_number,
-        )
-        .unwrap();
+        ).unwrap();
         let local_addrs = address::local(&local.address_family, &local.address);
         for organization in registry {
             for node in &organization.nodes {
@@ -41,8 +40,7 @@ pub async fn reconcile(config: &Config, registry: &Registry) -> std::io::Result<
                         &organization.organization,
                         &node.common_name,
                         &remote.serial_number,
-                    )
-                    .unwrap();
+                    ).unwrap();
                     let remote_addrs = address::remote(&remote.address_family, &remote.address);
                     let name = hex::encode(Sha256::digest(format!("{}-{}", &local_id, &remote_id)));
                     desired.insert(name.clone());
@@ -64,17 +62,16 @@ pub async fn reconcile(config: &Config, registry: &Registry) -> std::io::Result<
                             local.updown.clone(),
                             local.fwmark.clone(),
                         )
-                        .await
-                        .unwrap();
+                        .await?;
                 }
             }
         }
     }
 
-    let current = HashSet::<String>::from_iter(client.get_conns().await.unwrap().into_iter());
+    let current = HashSet::<String>::from_iter(client.get_conns().await?.into_iter());
 
     for conn in current.difference(&desired) {
-        client.unload_conn(conn).await.unwrap();
+        client.unload_conn(conn).await?;
     }
 
     Ok(())
