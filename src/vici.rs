@@ -16,10 +16,10 @@ impl Client {
         let v = semver::Version::parse(&v.version)?;
         Ok(v)
     }
-    pub async fn load_key(&mut self, key: &str) -> Result<(), Error> {
+    pub async fn load_key(&mut self, key: &[u8]) -> Result<(), Error> {
         let key = Key {
             r#type: "any",
-            data: key,
+            data: std::str::from_utf8(key)?,
         };
         let res: Status = self.client.request("load-key", key).await?;
         res.parse()

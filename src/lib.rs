@@ -11,7 +11,7 @@ pub mod registry;
 pub mod vici;
 
 pub mod error {
-    use std::string::FromUtf8Error;
+    use std::{str::Utf8Error, string::FromUtf8Error};
     use thiserror::Error;
 
     #[derive(Debug, Error)]
@@ -26,6 +26,8 @@ pub mod error {
         Protocol(Option<String>),
         #[error("from utf8 error")]
         FromUtf8(#[from] FromUtf8Error),
+        #[error("utf8 error")]
+        Utf8(#[from] Utf8Error),
         #[error("openssl error")]
         Openssl(#[from] openssl::error::ErrorStack),
         #[error("serde json error")]
@@ -33,12 +35,16 @@ pub mod error {
     }
 }
 
-pub async fn reconcile(config: &Config, registry: &Registry) -> Result<(), error::Error> {
+pub async fn reconcile(
+    config: &Config,
+    registry: &Registry,
+    key: &[u8],
+) -> Result<(), error::Error> {
     let mut client = vici::Client::connect("/run/charon.vici").await?;
 
-    client.load_key(&config.private_key).await?;
+    client.load_key(key).await?;
 
-    let public_key = key::private_key_to_public(config.private_key.as_bytes())?;
+    let public_key = key::private_key_to_public(key)?;
     let public_key = String::from_utf8(public_key)?;
 
     let mut desired = HashSet::<String>::default();

@@ -11,6 +11,9 @@ struct Args {
     /// path to registry file
     #[arg(short, long)]
     registry: String,
+    /// path to private key
+    #[arg(short, long)]
+    key: String,
     #[command(subcommand)]
     command: Commands,
 }
@@ -25,22 +28,20 @@ enum Commands {
 async fn main() -> Result<(), ranet::error::Error> {
     let args = Args::parse();
 
-    let file = std::fs::OpenOptions::new().read(true).open(&args.config)?;
+    let config = tokio::fs::read(&args.config).await?;
+    let config: Config = serde_json::from_slice(&config)?;
 
-    let config: Config = serde_json::from_reader(file)?;
+    let key = tokio::fs::read(&args.key).await?;
 
     match &args.command {
         Commands::Up => {
-            let file = std::fs::OpenOptions::new()
-                .read(true)
-                .open(&args.registry)?;
+            let registry = tokio::fs::read(&args.registry).await?;
+            let registry: Registry = serde_json::from_slice(&registry)?;
 
-            let registry: Registry = serde_json::from_reader(file)?;
-
-            reconcile(&config, &registry).await?;
+            reconcile(&config, &registry, &key).await?;
         }
         Commands::Down => {
-            reconcile(&config, &vec![]).await?;
+            reconcile(&config, &vec![], &key).await?;
         }
     }
 

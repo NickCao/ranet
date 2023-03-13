@@ -3,7 +3,6 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
-    pub private_key: String,
     pub organization: String,
     pub common_name: String,
     pub endpoints: Vec<Endpoint>,
