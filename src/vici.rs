@@ -1,24 +1,6 @@
+use crate::error::Error;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, path::Path, string::FromUtf8Error};
-use thiserror::Error;
-
-#[derive(Debug, Error)]
-pub enum Error {
-    #[error("io error")]
-    IO(#[from] std::io::Error),
-    #[error("vici error")]
-    Vici(#[from] rsvici::Error),
-    #[error("semver error")]
-    Semver(#[from] semver::Error),
-    #[error("protocol error: {0:?}")]
-    Protocol(Option<String>),
-    #[error("from utf8 error")]
-    FromUtf8(#[from] FromUtf8Error),
-    #[error("openssl error")]
-    Openssl(#[from] openssl::error::ErrorStack),
-    #[error("serde json error")]
-    Json(#[from] serde_json::Error),
-}
+use std::{collections::HashMap, path::Path};
 
 pub struct Client {
     client: rsvici::Client,

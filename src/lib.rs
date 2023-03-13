@@ -10,7 +10,30 @@ pub mod key;
 pub mod registry;
 pub mod vici;
 
-pub async fn reconcile(config: &Config, registry: &Registry) -> Result<(), vici::Error> {
+pub mod error {
+    use std::string::FromUtf8Error;
+    use thiserror::Error;
+
+    #[derive(Debug, Error)]
+    pub enum Error {
+        #[error("io error")]
+        IO(#[from] std::io::Error),
+        #[error("vici error")]
+        Vici(#[from] rsvici::Error),
+        #[error("semver error")]
+        Semver(#[from] semver::Error),
+        #[error("protocol error: {0:?}")]
+        Protocol(Option<String>),
+        #[error("from utf8 error")]
+        FromUtf8(#[from] FromUtf8Error),
+        #[error("openssl error")]
+        Openssl(#[from] openssl::error::ErrorStack),
+        #[error("serde json error")]
+        Json(#[from] serde_json::Error),
+    }
+}
+
+pub async fn reconcile(config: &Config, registry: &Registry) -> Result<(), error::Error> {
     let mut client = vici::Client::connect("/run/charon.vici").await?;
 
     client.load_key(&config.private_key).await?;
@@ -25,7 +48,8 @@ pub async fn reconcile(config: &Config, registry: &Registry) -> Result<(), vici:
             &config.organization,
             &config.common_name,
             &local.serial_number,
-        ).unwrap();
+        )
+        .unwrap();
         let local_addrs = address::local(&local.address_family, &local.address);
         for organization in registry {
             for node in &organization.nodes {
@@ -40,7 +64,8 @@ pub async fn reconcile(config: &Config, registry: &Registry) -> Result<(), vici:
                         &organization.organization,
                         &node.common_name,
                         &remote.serial_number,
-                    ).unwrap();
+                    )
+                    .unwrap();
                     let remote_addrs = address::remote(&remote.address_family, &remote.address);
                     let name = hex::encode(Sha256::digest(format!("{}-{}", &local_id, &remote_id)));
                     desired.insert(name.clone());

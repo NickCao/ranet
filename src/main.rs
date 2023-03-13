@@ -22,7 +22,7 @@ enum Commands {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), ranet::vici::Error> {
+async fn main() -> Result<(), ranet::error::Error> {
     let args = Args::parse();
 
     let file = std::fs::OpenOptions::new().read(true).open(&args.config)?;
