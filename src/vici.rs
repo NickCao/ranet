@@ -33,7 +33,7 @@ impl Client {
         fwmark: Option<String>,
     ) -> Result<(), Error> {
         let v = self.version().await?;
-        let conn = Connection::new(&v, local, remote, updown, fwmark);
+        let conn = Connection::new(&v, name.to_string(), local, remote, updown, fwmark);
         let resp: Status = self
             .client
             .request("load-conn", HashMap::from([(name, conn)]))
@@ -139,6 +139,7 @@ pub struct Endpoint {
 impl Connection {
     fn new(
         version: &semver::Version,
+        name: String,
         local: Endpoint,
         remote: Endpoint,
         updown: Option<String>,
@@ -168,7 +169,7 @@ impl Connection {
                 id: remote.id,
             },
             children: HashMap::from([(
-                "default".to_string(),
+                name,
                 Child {
                     local_ts: vec!["0.0.0.0/0".to_string(), "::/0".to_string()],
                     remote_ts: vec!["0.0.0.0/0".to_string(), "::/0".to_string()],
