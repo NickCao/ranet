@@ -40,6 +40,20 @@ impl Client {
             .await?;
         resp.parse()
     }
+    pub async fn initiate(&mut self, name: &str) -> Result<(), Error> {
+        let res: Status = self
+            .client
+            .request(
+                "initiate",
+                Initiate {
+                    ike: name,
+                    timeout: -1,
+                    init_limits: false,
+                },
+            )
+            .await?;
+        res.parse()
+    }
     pub async fn get_conns(&mut self) -> Result<Vec<String>, Error> {
         let res: Conns = self.client.request("get-conns", ()).await?;
         Ok(res.conns)
@@ -87,6 +101,13 @@ struct Conns {
 #[derive(Debug, Serialize)]
 struct Unload<'a> {
     name: &'a str,
+}
+
+#[derive(Debug, Serialize)]
+struct Initiate<'a> {
+    ike: &'a str,
+    timeout: isize,
+    init_limits: bool,
 }
 
 #[derive(Debug, Serialize)]

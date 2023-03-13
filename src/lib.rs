@@ -94,6 +94,7 @@ pub async fn reconcile(
                             local.fwmark.clone(),
                         )
                         .await?;
+                    client.initiate(&name).await?;
                 }
             }
         }
