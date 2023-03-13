@@ -16,7 +16,7 @@ pub struct Organization {
 pub struct Node {
     pub common_name: String,
     pub endpoints: Vec<Endpoint>,
-    pub remarks: HashMap<String, String>,
+    pub remarks: Option<HashMap<String, String>>,
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
