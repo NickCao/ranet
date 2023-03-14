@@ -177,7 +177,7 @@ impl Connection {
             remote_port: remote.port,
             encap: true,
             mobike: false,
-            dpd_delay: 60,
+            dpd_delay: 10,
             keyingtries: 0,
             if_id_in: "%unique",
             if_id_out: "%unique",
