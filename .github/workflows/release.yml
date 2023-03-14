@@ -10,4 +10,4 @@ jobs:
         rustup target add x86_64-unknown-linux-musl
 
         cargo install cargo-auditable
-        cargo auditable build --release --target x86_64-unknown-linux-musl
+        cargo auditable build --release --features vendored --target x86_64-unknown-linux-musl
