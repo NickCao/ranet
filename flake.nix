@@ -4,24 +4,37 @@
     flake-utils.url = "github:numtide/flake-utils";
   };
   outputs = { self, nixpkgs, flake-utils }:
-    flake-utils.lib.eachDefaultSystem
+    flake-utils.lib.eachSystem [ "x86_64-linux" "aarch64-linux" ]
       (system:
-        let pkgs = import nixpkgs { inherit system; }; in
+        let
+          pkgs = import nixpkgs {
+            inherit system;
+            overlays = [ self.overlays.default ];
+          };
+        in
         rec {
+          packages = {
+            default = pkgs.ranet;
+            ranet = pkgs.ranet;
+            ranet-static = pkgs.pkgsStatic.ranet;
+          };
           devShells.default = pkgs.mkShell {
             nativeBuildInputs = with pkgs;[ rustfmt rust-analyzer ];
             inputsFrom = [ packages.default ];
           };
-          packages.default = pkgs.rustPlatform.buildRustPackage {
-            name = "ranet";
-            src = self;
-            cargoLock = {
-              lockFile = ./Cargo.lock;
-            };
-            nativeBuildInputs = [ pkgs.pkg-config ];
-            buildInputs = [ pkgs.openssl ];
-            checkFlags = [ "--skip=address::test::remote" ];
-          };
         }
-      );
+      ) // {
+      overlays.default = final: _: with final; {
+        ranet = rustPlatform.buildRustPackage {
+          name = "ranet";
+          src = self;
+          cargoLock = {
+            lockFile = ./Cargo.lock;
+          };
+          nativeBuildInputs = [ pkg-config ];
+          buildInputs = [ openssl ];
+          checkFlags = [ "--skip=address::test::remote" ];
+        };
+      };
+    };
 }
