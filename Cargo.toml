@@ -19,3 +19,6 @@ thiserror = "1.0.39"
 
 [features]
 vendored = ["openssl/vendored"]
+
+[profile.release]
+lto = true
