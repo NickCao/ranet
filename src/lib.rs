@@ -1,6 +1,6 @@
 use config::Config;
+use openssl::sha::sha256;
 use registry::Registry;
-use sha2::{Digest, Sha256};
 use std::collections::HashSet;
 
 pub mod address;
@@ -73,7 +73,8 @@ pub async fn reconcile(
                     )
                     .unwrap();
                     let remote_addrs = address::remote(&remote.address_family, &remote.address);
-                    let name = hex::encode(Sha256::digest(format!("{}-{}", &local_id, &remote_id)));
+                    let name =
+                        hex::encode(sha256(format!("{}-{}", &local_id, &remote_id).as_bytes()));
                     desired.insert(name.clone());
                     client
                         .load_conn(
