@@ -41,7 +41,7 @@ impl Client {
         resp.parse()
     }
     pub async fn initiate(&mut self, name: &str) -> Result<(), Error> {
-        let res: Status = self
+        let _res: Status = self
             .client
             .request(
                 "initiate",
@@ -53,7 +53,7 @@ impl Client {
                 },
             )
             .await?;
-        res.parse()
+        Ok(())
     }
     pub async fn get_conns(&mut self) -> Result<Vec<String>, Error> {
         let res: Conns = self.client.request("get-conns", ()).await?;
