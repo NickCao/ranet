@@ -1,10 +1,13 @@
 name: release
-on: workflow_dispatch
+on: [ push ]
 jobs:
   ranet-static:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - run: |
+    - name: build
+      run: |
         rustup target add x86_64-unknown-linux-musl
-        cargo build --target x86_64-unknown-linux-musl
+
+        cargo install cargo-auditable
+        cargo auditable build --release --target x86_64-unknown-linux-musl
