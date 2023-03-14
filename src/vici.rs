@@ -142,6 +142,7 @@ struct Connection {
     // proposals
     // dscp
     encap: bool,
+    mobike: bool,
     dpd_delay: u64,
     keyingtries: u32,
     unique: &'static str,
@@ -176,6 +177,7 @@ impl Connection {
             local_port: local.port,
             remote_port: remote.port,
             encap: true,
+            mobike: false,
             dpd_delay: 60,
             keyingtries: 0,
             unique: "replace",
