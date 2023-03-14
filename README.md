@@ -2,7 +2,7 @@
 
 #### About
 
-ranet, acronym for redundant array of networks, forms full mesh IPSec connectivity among networt participants.
+ranet, acronym for redundant array of networks, forms full mesh IPSec connectivity among network participants.
 
 #### Configuration
 
