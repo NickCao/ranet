@@ -145,6 +145,7 @@ struct Connection {
     mobike: bool,
     dpd_delay: u64,
     keyingtries: u32,
+    unique: &'static str,
     if_id_in: &'static str,
     if_id_out: &'static str,
     local: Authentication,
@@ -179,6 +180,7 @@ impl Connection {
             mobike: false,
             dpd_delay: 10,
             keyingtries: 0,
+            unique: "no",
             if_id_in: "%unique",
             if_id_out: "%unique",
             local: Authentication {
