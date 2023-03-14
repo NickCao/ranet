@@ -47,6 +47,7 @@ impl Client {
                 "initiate",
                 Initiate {
                     ike: name,
+                    child: name,
                     timeout: -1,
                     init_limits: false,
                 },
@@ -104,8 +105,9 @@ struct Unload<'a> {
 }
 
 #[derive(Debug, Serialize)]
-struct Initiate<'a> {
+struct Initiate<'a, 'b> {
     ike: &'a str,
+    child: &'b str,
     timeout: isize,
     init_limits: bool,
 }
