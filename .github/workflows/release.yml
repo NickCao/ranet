@@ -1,0 +1,10 @@
+name: release
+on: [ push ]
+jobs:
+  ranet-static:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: DeterminateSystems/nix-installer-action@main
+    - run: |
+        nix build -vL .#ranet-static
