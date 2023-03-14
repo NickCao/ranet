@@ -9,8 +9,8 @@ jobs:
       run: |
         cargo install cross --git https://github.com/cross-rs/cross
 
-        cross build --release --target x86_64-unknown-linux-musl
-        cross build --release --target aarch64-unknown-linux-musl
+        cross build --release --features vendored --target x86_64-unknown-linux-musl
+        cross build --release --features vendored --target aarch64-unknown-linux-musl
     - uses: actions/upload-artifact@v3
       with:
         name: binary
