@@ -180,7 +180,7 @@ impl Connection {
             mobike: false,
             dpd_delay: 60,
             keyingtries: 0,
-            unique: "replace",
+            unique: "keep",
             if_id_in: "%unique",
             if_id_out: "%unique",
             local: Authentication {
