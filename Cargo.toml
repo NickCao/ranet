@@ -12,8 +12,6 @@ rsvici = "0.1.1"
 clap = { version = "4.1.8", features = ["derive"] }
 openssl = "0.10.45"
 indoc = "2"
-rasn = "0.6.1"
-rasn-pkix = "0.6.0"
 hex = "0.4.3"
 ipnet = "2.7.1"
 semver = "1.0.17"
