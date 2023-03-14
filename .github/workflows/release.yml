@@ -8,7 +8,6 @@ jobs:
         target:
         - x86_64-unknown-linux-musl
         - aarch64-unknown-linux-musl
-        - riscv64gc-unknown-linux-musl
     steps:
     - uses: actions/checkout@v3
     - name: build
