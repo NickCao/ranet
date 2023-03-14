@@ -18,6 +18,3 @@ hex = "0.4.3"
 ipnet = "2.7.1"
 semver = "1.0.17"
 thiserror = "1.0.39"
-
-[features]
-vendored = ["openssl/vendored"]
