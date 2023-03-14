@@ -7,12 +7,10 @@ jobs:
     - uses: actions/checkout@v3
     - name: build
       run: |
-        sudo apt-get install -y musl-tools
+        cargo install cross --git https://github.com/cross-rs/cross
 
-        rustup target add x86_64-unknown-linux-musl
-
-        cargo install cargo-auditable
-        cargo auditable build --release --features vendored --target x86_64-unknown-linux-musl
+        cross build --release --features vendored --target x86_64-unknown-linux-musl
+        cross build --release --features vendored --target aarch64-unknown-linux-musl
     - uses: actions/upload-artifact@v3
       with:
         name: binary
