@@ -1,5 +1,5 @@
 name: release
-on: [ push ]
+on: workflow_dispatch
 jobs:
   ranet-static:
     runs-on: ubuntu-latest
