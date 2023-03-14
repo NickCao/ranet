@@ -14,3 +14,7 @@ jobs:
       run: |
         cargo install cross --git https://github.com/cross-rs/cross
         cross build --release --features vendored --target ${{ matrix.target }}
+    - uses: actions/upload-artifact@v3
+      with:
+        name: ${{ matrix.target }}
+        path: target/${{ matrix.target }}/release/ranet
