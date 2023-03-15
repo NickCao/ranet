@@ -14,6 +14,9 @@ struct Args {
     /// path to private key
     #[arg(short, long)]
     key: String,
+    /// path to vici control socket
+    #[arg(short, long, default_value = "/run/charon.vici")]
+    vici: String,
     #[command(subcommand)]
     command: Commands,
 }
@@ -38,10 +41,10 @@ async fn main() -> Result<(), ranet::error::Error> {
             let registry = tokio::fs::read(&args.registry).await?;
             let registry: Registry = serde_json::from_slice(&registry)?;
 
-            reconcile(&config, &registry, &key).await?;
+            reconcile(&args.vici, &config, &registry, &key).await?;
         }
         Commands::Down => {
-            reconcile(&config, &vec![], &key).await?;
+            reconcile(&args.vici, &config, &vec![], &key).await?;
         }
     }
 

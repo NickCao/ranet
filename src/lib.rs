@@ -36,11 +36,12 @@ pub mod error {
 }
 
 pub async fn reconcile(
+    socket: &str,
     config: &Config,
     registry: &Registry,
     key: &[u8],
 ) -> Result<(), error::Error> {
-    let mut client = vici::Client::connect("/run/charon.vici").await?;
+    let mut client = vici::Client::connect(socket).await?;
 
     client.load_key(key).await?;
 
