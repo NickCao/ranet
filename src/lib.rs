@@ -105,6 +105,7 @@ pub async fn reconcile(
 
     for conn in current.difference(&desired) {
         client.unload_conn(conn).await?;
+        client.terminate(conn).await?;
     }
 
     Ok(())

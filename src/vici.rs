@@ -54,6 +54,19 @@ impl Client {
             .await?;
         Ok(())
     }
+    pub async fn terminate(&mut self, name: &str) -> Result<(), Error> {
+        let _res: Status = self
+            .client
+            .request(
+                "terminate",
+                Terminate {
+                    ike: name,
+                    timeout: -1,
+                },
+            )
+            .await?;
+        Ok(())
+    }
     pub async fn get_conns(&mut self) -> Result<Vec<String>, Error> {
         let res: Conns = self.client.request("get-conns", ()).await?;
         Ok(res.conns)
@@ -109,6 +122,12 @@ struct Initiate<'a, 'b> {
     child: &'b str,
     timeout: isize,
     init_limits: bool,
+}
+
+#[derive(Debug, Serialize)]
+struct Terminate<'a> {
+    ike: &'a str,
+    timeout: isize,
 }
 
 #[derive(Debug, Serialize)]
