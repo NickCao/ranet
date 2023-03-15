@@ -32,8 +32,7 @@ impl Client {
         updown: Option<String>,
         fwmark: Option<String>,
     ) -> Result<(), Error> {
-        let v = self.version().await?;
-        let conn = Connection::new(&v, local, remote, updown, fwmark);
+        let conn = Connection::new(local, remote, updown, fwmark);
         let resp: Status = self
             .client
             .request("load-conn", HashMap::from([(name, conn)]))
@@ -162,13 +161,11 @@ pub struct Endpoint {
 
 impl Connection {
     fn new(
-        version: &semver::Version,
         local: Endpoint,
         remote: Endpoint,
         updown: Option<String>,
         fwmark: Option<String>,
     ) -> Self {
-        let trap_available = semver::VersionReq::parse(">=5.9.6").unwrap();
         Self {
             version: 2,
             local_addrs: local.addrs,
@@ -201,12 +198,8 @@ impl Connection {
                     mode: "tunnel",
                     dpd_action: "restart",
                     set_mark_out: fwmark.unwrap_or_default(),
-                    start_action: if trap_available.matches(version) {
-                        "trap|start"
-                    } else {
-                        "start"
-                    },
-                    close_action: "start",
+                    start_action: "none",
+                    close_action: "none",
                 },
             )]),
         }
