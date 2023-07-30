@@ -14,6 +14,7 @@ hex = "*"
 ipnet = "*"
 semver = "*"
 thiserror = "*"
+indoc = "*"
 
 [features]
 vendored = ["openssl/vendored"]
