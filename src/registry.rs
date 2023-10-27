@@ -1,9 +1,8 @@
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use serde::{de::IgnoredAny, Deserialize};
 
 pub type Registry = Vec<Organization>;
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Organization {
     pub public_key: String,
@@ -11,15 +10,15 @@ pub struct Organization {
     pub nodes: Vec<Node>,
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Node {
     pub common_name: String,
     pub endpoints: Vec<Endpoint>,
-    pub remarks: Option<HashMap<String, String>>,
+    pub remarks: Option<IgnoredAny>,
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Endpoint {
     pub serial_number: String,
@@ -56,7 +55,8 @@ mod test {
                       }
                     ],
                     "remarks": {
-                      "some": "random note"
+                      "some": "random note",
+                      "other": false
                     }
                   }
                 ]
@@ -87,10 +87,7 @@ mod test {
                             port: 4000
                         }
                     ],
-                    remarks: Some(HashMap::from([(
-                        "some".to_string(),
-                        "random note".to_string()
-                    )]))
+                    remarks: Some(IgnoredAny)
                 }]
             }]
         )
