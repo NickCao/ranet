@@ -217,8 +217,8 @@ impl Connection {
                     mode: "tunnel",
                     dpd_action: "restart",
                     set_mark_out: fwmark.unwrap_or_default(),
-                    start_action: "none",
-                    close_action: "none",
+                    start_action: "start",
+                    close_action: "start",
                 },
             )]),
         }
