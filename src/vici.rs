@@ -1,6 +1,8 @@
 use crate::error::Error;
+use futures::TryStreamExt;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, path::Path};
+use tracing::debug;
 
 pub struct Client {
     client: rsvici::Client,
@@ -40,6 +42,16 @@ impl Client {
         resp.parse()
     }
     pub async fn initiate(&mut self, name: &str) -> Result<(), Error> {
+        let sas = self.list_sas(name).await?;
+
+        for sa in sas.iter().flat_map(|v| v.values()) {
+            if sa.child_sas.len() > 0 || sa.tasks_active.contains(&"CHILD_CREATE".to_string()) {
+                return Ok(());
+            }
+        }
+
+        debug!("initiating sa {}", name);
+
         let _res: Status = self
             .client
             .request(
@@ -74,6 +86,15 @@ impl Client {
     pub async fn unload_conn(&mut self, name: &str) -> Result<(), Error> {
         let res: Status = self.client.request("unload-conn", Unload { name }).await?;
         res.parse()
+    }
+    async fn list_sas(&mut self, name: &str) -> Result<Vec<HashMap<String, SA>>, Error> {
+        let sas = self.client.stream_request::<ListSAs, SAs>(
+            "list-sas",
+            "list-sa",
+            ListSAs { ike: name },
+        );
+
+        Ok(sas.try_collect::<Vec<_>>().await?)
     }
 }
 
@@ -123,6 +144,21 @@ struct Initiate<'a, 'b> {
     timeout: isize,
     init_limits: bool,
 }
+
+#[derive(Debug, Serialize)]
+struct ListSAs<'a> {
+    ike: &'a str,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+struct SA {
+    #[serde(default)]
+    tasks_active: Vec<String>,
+    child_sas: HashMap<String, serde::de::IgnoredAny>,
+}
+
+type SAs = HashMap<String, SA>;
 
 #[derive(Debug, Serialize)]
 struct Terminate<'a> {

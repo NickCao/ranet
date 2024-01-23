@@ -17,6 +17,7 @@ thiserror = "*"
 indoc = "*"
 tracing = { version = "0.1.40" }
 tracing-subscriber = { version = "0.3.18", features = [ "env-filter" ] }
+futures = "0.3.30"
 
 [features]
 vendored = ["openssl/vendored"]
