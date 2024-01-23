@@ -2,7 +2,7 @@ use config::Config;
 use openssl::sha::sha256;
 use registry::Registry;
 use std::collections::HashSet;
-use tracing::{debug, debug_span, event, Level};
+use tracing::{debug, debug_span, info, warn};
 
 pub mod address;
 pub mod asn;
@@ -76,20 +76,17 @@ pub async fn reconcile(
 
         let local_addrs = address::local(&local.address_family, &local.address);
         for organization in registry {
-            let _span_organization =
-                debug_span!("organization", public_key = organization.public_key).entered();
+            let _span_organization = debug_span!("org", name = organization.organization).entered();
 
             for node in &organization.nodes {
-                let _span_node = debug_span!("node", common_name = node.common_name).entered();
+                let _span_node = debug_span!("node", cn = node.common_name).entered();
 
                 if node.common_name == config.common_name {
                     continue;
                 }
                 for remote in &node.endpoints {
                     let _span_endpoint =
-                        debug_span!("endpoint", serial_number = remote.serial_number).entered();
-
-                    debug!("handling endpoint");
+                        debug_span!("endpoint", sn = remote.serial_number).entered();
 
                     if remote.address_family != local.address_family {
                         continue;
@@ -125,10 +122,14 @@ pub async fn reconcile(
                             local.fwmark.clone(),
                         )
                         .await;
+
                     if let Err(err) = result {
-                        event!(Level::WARN, "load_conn error: {}", err);
+                        warn!("load connection error: {}", err);
                         continue;
                     }
+
+                    info!("loaded connection");
+
                     client.initiate(&name).await?;
                 }
             }

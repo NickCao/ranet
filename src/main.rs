@@ -1,5 +1,8 @@
+use std::fmt::Debug;
+
 use clap::{Parser, Subcommand};
 use ranet::{config::Config, reconcile, registry::Registry};
+use tracing_subscriber::EnvFilter;
 
 /// ranet
 #[derive(Parser, Debug)]
@@ -29,7 +32,10 @@ enum Commands {
 
 #[tokio::main]
 async fn main() -> Result<(), ranet::error::Error> {
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::fmt::fmt()
+        .pretty()
+        .with_env_filter(EnvFilter::from_default_env())
+        .init();
 
     let args = Args::parse();
 
