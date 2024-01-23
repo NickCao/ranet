@@ -129,6 +129,8 @@ pub async fn reconcile(
                     }
 
                     info!("loaded connection");
+
+                    client.initiate(&name).await?;
                 }
             }
         }
