@@ -2,7 +2,7 @@ use config::Config;
 use openssl::sha::sha256;
 use registry::Registry;
 use std::collections::HashSet;
-use tracing::debug_span;
+use tracing::{debug, debug_span, event, Level};
 
 pub mod address;
 pub mod asn;
@@ -43,49 +43,70 @@ pub async fn reconcile(
     key: &[u8],
 ) -> Result<(), error::Error> {
     let _span_reconcile = debug_span!("reconcile").entered();
+
     let mut client = vici::Client::connect(socket).await?;
 
+    debug!("connected to vici socket");
+
     client.load_key(key).await?;
+
+    debug!("loaded private key");
 
     let public_key = key::private_key_to_public(key)?;
     let public_key = String::from_utf8(public_key)?;
 
+    debug!("derived public key");
+
     let mut desired = HashSet::<String>::default();
 
     for local in &config.endpoints {
-        let _span_local = debug_span!("local", serial_number = local.serial_number).entered();
+        let _span_local = debug_span!("local").entered();
+
         let local_id = asn::encode_identity(
             &config.organization,
             &config.common_name,
             &local.serial_number,
         )
         .unwrap();
+
+        debug!(
+            "encoded local_id {} {} {}",
+            config.organization, config.common_name, local.serial_number
+        );
+
         let local_addrs = address::local(&local.address_family, &local.address);
         for organization in registry {
             let _span_organization =
                 debug_span!("organization", public_key = organization.public_key).entered();
+
             for node in &organization.nodes {
                 let _span_node = debug_span!("node", common_name = node.common_name).entered();
+
                 if node.common_name == config.common_name {
                     continue;
                 }
                 for remote in &node.endpoints {
-                    let _span_remote =
-                        debug_span!("remote", serial_number = remote.serial_number).entered();
+                    let _span_endpoint =
+                        debug_span!("endpoint", serial_number = remote.serial_number).entered();
+
+                    debug!("handling endpoint");
+
                     if remote.address_family != local.address_family {
                         continue;
                     }
+
                     let remote_id = asn::encode_identity(
                         &organization.organization,
                         &node.common_name,
                         &remote.serial_number,
                     )
                     .unwrap();
+
                     let remote_addrs = address::remote(&remote.address_family, &remote.address);
                     let name =
                         hex::encode(sha256(format!("{}-{}", &local_id, &remote_id).as_bytes()));
                     desired.insert(name.clone());
-                    client
+                    let result = client
                         .load_conn(
                             &name,
                             vici::Endpoint {
@@ -103,7 +124,11 @@ pub async fn reconcile(
                             local.updown.clone(),
                             local.fwmark.clone(),
                         )
-                        .await?;
+                        .await;
+                    if let Err(err) = result {
+                        event!(Level::WARN, "load_conn error: {}", err);
+                        continue;
+                    }
                     client.initiate(&name).await?;
                 }
             }

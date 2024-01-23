@@ -1,6 +1,5 @@
 use clap::{Parser, Subcommand};
 use ranet::{config::Config, reconcile, registry::Registry};
-use tracing::debug_span;
 
 /// ranet
 #[derive(Parser, Debug)]
@@ -30,10 +29,9 @@ enum Commands {
 
 #[tokio::main]
 async fn main() -> Result<(), ranet::error::Error> {
-    env_logger::init();
-    let args = Args::parse();
+    tracing_subscriber::fmt::init();
 
-    let _span = debug_span!("main").entered();
+    let args = Args::parse();
 
     let config = tokio::fs::read(&args.config).await?;
     let config: Config = serde_json::from_slice(&config)?;
