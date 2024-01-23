@@ -15,6 +15,7 @@ ipnet = "*"
 semver = "*"
 thiserror = "*"
 indoc = "*"
+tracing = { version = "0.1.40", features = ["log"] }
 
 [features]
 vendored = ["openssl/vendored"]
