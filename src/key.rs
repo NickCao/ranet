@@ -1,5 +1,6 @@
 use openssl::error::ErrorStack;
 
+
 pub fn private_key_to_public(pem: &[u8]) -> Result<Vec<u8>, ErrorStack> {
     let private_key = openssl::pkey::PKey::private_key_from_pem(pem)?;
     let public_key = private_key.public_key_to_pem()?;

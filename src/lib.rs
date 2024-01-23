@@ -2,6 +2,7 @@ use config::Config;
 use openssl::sha::sha256;
 use registry::Registry;
 use std::collections::HashSet;
+use tracing::debug_span;
 
 pub mod address;
 pub mod asn;
@@ -41,6 +42,7 @@ pub async fn reconcile(
     registry: &Registry,
     key: &[u8],
 ) -> Result<(), error::Error> {
+    let _span_reconcile = debug_span!("reconcile").entered();
     let mut client = vici::Client::connect(socket).await?;
 
     client.load_key(key).await?;
@@ -51,6 +53,7 @@ pub async fn reconcile(
     let mut desired = HashSet::<String>::default();
 
     for local in &config.endpoints {
+        let _span_local = debug_span!("local", serial_number = local.serial_number).entered();
         let local_id = asn::encode_identity(
             &config.organization,
             &config.common_name,
@@ -59,11 +62,16 @@ pub async fn reconcile(
         .unwrap();
         let local_addrs = address::local(&local.address_family, &local.address);
         for organization in registry {
+            let _span_organization =
+                debug_span!("organization", public_key = organization.public_key).entered();
             for node in &organization.nodes {
+                let _span_node = debug_span!("node", common_name = node.common_name).entered();
                 if node.common_name == config.common_name {
                     continue;
                 }
                 for remote in &node.endpoints {
+                    let _span_remote =
+                        debug_span!("remote", serial_number = remote.serial_number).entered();
                     if remote.address_family != local.address_family {
                         continue;
                     }

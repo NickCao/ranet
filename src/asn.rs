@@ -10,7 +10,7 @@ pub fn encode_identity(
     b.append_entry_by_text("CN", common_name)?;
     b.append_entry_by_text("serialNumber", serial_number)?;
     let name = b.build().to_der()?;
-    Ok(format!("asn1dn:#{}", hex::encode(&name)))
+    Ok(format!("asn1dn:#{}", hex::encode(name)))
 }
 
 #[cfg(test)]
