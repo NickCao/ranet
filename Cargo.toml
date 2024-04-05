@@ -15,9 +15,9 @@ ipnet = "*"
 semver = "*"
 thiserror = "*"
 indoc = "*"
-tracing = { version = "0.1.40" }
-tracing-subscriber = { version = "0.3.18", features = [ "env-filter" ] }
-futures = "0.3.30"
+tracing = { version = "*" }
+tracing-subscriber = { version = "*", features = [ "env-filter" ] }
+futures = "*"
 
 [features]
 vendored = ["openssl/vendored"]
