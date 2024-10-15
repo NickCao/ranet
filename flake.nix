@@ -31,8 +31,6 @@
           cargoLock = {
             lockFile = ./Cargo.lock;
           };
-          nativeBuildInputs = [ pkg-config ];
-          buildInputs = [ openssl ];
           checkFlags = [ "--skip=address::test::remote" ];
         };
       };
