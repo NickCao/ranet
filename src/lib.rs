@@ -1,6 +1,7 @@
 use config::Config;
-use openssl::sha::sha256;
+use core::str;
 use registry::Registry;
+use sha2::{Digest, Sha256};
 use std::collections::HashSet;
 use tracing::{debug, debug_span, info, warn};
 
@@ -29,8 +30,8 @@ pub mod error {
         FromUtf8(#[from] FromUtf8Error),
         #[error("utf8 error")]
         Utf8(#[from] Utf8Error),
-        #[error("openssl error")]
-        Openssl(#[from] openssl::error::ErrorStack),
+        #[error("pkcs8 error")]
+        Openssl(#[from] ed25519_dalek::pkcs8::Error),
         #[error("serde json error")]
         Json(#[from] serde_json::Error),
     }
@@ -52,8 +53,7 @@ pub async fn reconcile(
 
     debug!("loaded private key");
 
-    let public_key = key::private_key_to_public(key)?;
-    let public_key = String::from_utf8(public_key)?;
+    let public_key = key::private_key_to_public(str::from_utf8(key)?)?;
 
     debug!("derived public key");
 
@@ -100,8 +100,9 @@ pub async fn reconcile(
                     .unwrap();
 
                     let remote_addrs = address::remote(&remote.address_family, &remote.address);
-                    let name =
-                        hex::encode(sha256(format!("{}-{}", &local_id, &remote_id).as_bytes()));
+                    let name = hex::encode(Sha256::digest(
+                        format!("{}-{}", &local_id, &remote_id).as_bytes(),
+                    ));
                     desired.insert(name.clone());
                     let result = client
                         .load_conn(
