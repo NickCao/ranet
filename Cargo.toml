@@ -18,6 +18,8 @@ indoc = "*"
 tracing = { version = "*" }
 tracing-subscriber = { version = "*", features = [ "env-filter" ] }
 futures = "*"
+const-oid = { version = "0.9.6", features = ["db"] }
+x509-cert = "0.2.5"
 
 [features]
 vendored = ["openssl/vendored"]
