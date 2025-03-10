@@ -45,7 +45,7 @@ impl Client {
         let sas = self.list_sas(name).await?;
 
         for sa in sas.iter().flat_map(|v| v.values()) {
-            if sa.child_sas.len() > 0 || sa.tasks_active.contains(&"CHILD_CREATE".to_string()) {
+            if !sa.child_sas.is_empty() || sa.tasks_active.contains(&"CHILD_CREATE".to_string()) {
                 return Ok(());
             }
         }
