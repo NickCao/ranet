@@ -1,3 +1,4 @@
+use base64::prelude::{Engine, BASE64_URL_SAFE};
 use config::Config;
 use core::str;
 use registry::Registry;
@@ -34,6 +35,18 @@ pub mod error {
         Openssl(#[from] ed25519_dalek::pkcs8::Error),
         #[error("serde json error")]
         Json(#[from] serde_json::Error),
+    }
+}
+
+fn generate_name(existing: &HashSet<String>, data: &[u8]) -> String {
+    let mut data = data.to_vec();
+    loop {
+        let name = BASE64_URL_SAFE.encode(&Sha256::digest(&data)[..3]);
+        if existing.contains(&name) {
+            data.push(0);
+        } else {
+            return name;
+        }
     }
 }
 
@@ -100,9 +113,8 @@ pub async fn reconcile(
                     .unwrap();
 
                     let remote_addrs = address::remote(&remote.address_family, &remote.address);
-                    let name = hex::encode(Sha256::digest(
-                        format!("{}-{}", &local_id, &remote_id).as_bytes(),
-                    ));
+                    let name =
+                        generate_name(&desired, format!("{}-{}", &local_id, &remote_id).as_bytes());
                     desired.insert(name.clone());
                     let result = client
                         .load_conn(
