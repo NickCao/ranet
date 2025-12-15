@@ -133,6 +133,7 @@ pub async fn reconcile(
                             },
                             local.updown.clone(),
                             local.fwmark.clone(),
+                            config.experimental.iptfs,
                         )
                         .await;
 

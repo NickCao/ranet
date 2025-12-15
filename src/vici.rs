@@ -33,8 +33,9 @@ impl Client {
         remote: Endpoint,
         updown: Option<String>,
         fwmark: Option<String>,
+        iptfs: bool,
     ) -> Result<(), Error> {
-        let conn = Connection::new(local, remote, updown, fwmark);
+        let conn = Connection::new(local, remote, updown, fwmark, iptfs);
         let resp: Status = self
             .client
             .request("load-conn", HashMap::from([(name, conn)]))
@@ -220,6 +221,7 @@ impl Connection {
         remote: Endpoint,
         updown: Option<String>,
         fwmark: Option<String>,
+        iptfs: bool,
     ) -> Self {
         Self {
             version: 2,
@@ -250,7 +252,7 @@ impl Connection {
                     local_ts: vec!["0.0.0.0/0".to_string(), "::/0".to_string()],
                     remote_ts: vec!["0.0.0.0/0".to_string(), "::/0".to_string()],
                     updown: updown.unwrap_or_default(),
-                    mode: "tunnel",
+                    mode: if iptfs { "iptfs" } else { "tunnel" },
                     dpd_action: "restart",
                     set_mark_out: fwmark.unwrap_or_default(),
                     start_action: "none",
