@@ -18,10 +18,10 @@ tracing = { version = "*" }
 tracing-subscriber = { version = "*", features = [ "env-filter" ] }
 futures = "*"
 const-oid = { version = "0.9.6", features = ["db"] }
-x509-cert = "0.2.5"
-ed25519-dalek = { version = "2.1.1", features = ["pkcs8", "pem"] }
-sha2 = "0.10.8"
-base64 = "0.22.1"
+x509-cert = "*"
+ed25519-dalek = { version = "*", features = ["pkcs8", "pem"] }
+sha2 = "*"
+base64 = "*"
 
 [profile.release]
 lto = true
