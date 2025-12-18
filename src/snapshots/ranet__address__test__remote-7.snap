@@ -1,0 +1,6 @@
+---
+source: src/address.rs
+expression: "super::remote(\"ip6\", &Some(\"localhost\".to_string()))"
+---
+- "::/0"
+- "::1"

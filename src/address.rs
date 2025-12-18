@@ -52,44 +52,23 @@ pub fn remote(address_family: &str, address: &Option<String>) -> Vec<String> {
 mod test {
     #[test]
     fn local() {
-        assert_eq!(super::local("invalid", &None), Vec::<String>::new());
-        assert_eq!(super::local("ip4", &None), vec!["0.0.0.0/0"]);
-        assert_eq!(super::local("ip6", &None), vec!["::/0"]);
-        assert_eq!(
-            super::local("ip4", &Some("127.0.0.1".to_string())),
-            vec!["127.0.0.1"]
-        );
-        assert_eq!(super::local("ip6", &Some("::1".to_string())), vec!["::1"]);
-        assert_eq!(
-            super::local("ip4", &Some("10.0.0.0/24".to_string())),
-            vec!["10.0.0.0/24"]
-        );
-        assert_eq!(
-            super::local("ip6", &Some("fd00::/8".to_string())),
-            vec!["fd00::/8"]
-        );
+        insta::assert_yaml_snapshot!(super::local("invalid", &None));
+        insta::assert_yaml_snapshot!(super::local("ip4", &None));
+        insta::assert_yaml_snapshot!(super::local("ip6", &None));
+        insta::assert_yaml_snapshot!(super::local("ip4", &Some("127.0.0.1".to_string())),);
+        insta::assert_yaml_snapshot!(super::local("ip6", &Some("::1".to_string())));
+        insta::assert_yaml_snapshot!(super::local("ip4", &Some("10.0.0.0/24".to_string())),);
+        insta::assert_yaml_snapshot!(super::local("ip6", &Some("fd00::/8".to_string())),);
     }
 
     #[test]
     fn remote() {
-        assert_eq!(super::remote("invalid", &None), Vec::<String>::new());
-        assert_eq!(super::remote("ip4", &None), vec!["0.0.0.0/0".to_string()]);
-        assert_eq!(super::remote("ip6", &None), vec!["::/0".to_string()]);
-        assert_eq!(
-            super::remote("ip4", &Some("name.invalid".to_string())),
-            vec!["0.0.0.0/0".to_string()]
-        );
-        assert_eq!(
-            super::remote("ip6", &Some("name.invalid".to_string())),
-            vec!["::/0".to_string()]
-        );
-        assert_eq!(
-            super::remote("ip4", &Some("localhost".to_string())),
-            vec!["0.0.0.0/0".to_string(), "127.0.0.1".to_string()]
-        );
-        assert_eq!(
-            super::remote("ip6", &Some("localhost".to_string())),
-            vec!["::/0".to_string(), "::1".to_string()]
-        );
+        insta::assert_yaml_snapshot!(super::remote("invalid", &None));
+        insta::assert_yaml_snapshot!(super::remote("ip4", &None));
+        insta::assert_yaml_snapshot!(super::remote("ip6", &None));
+        insta::assert_yaml_snapshot!(super::remote("ip4", &Some("name.invalid".to_string())),);
+        insta::assert_yaml_snapshot!(super::remote("ip6", &Some("name.invalid".to_string())),);
+        insta::assert_yaml_snapshot!(super::remote("ip4", &Some("localhost".to_string())),);
+        insta::assert_yaml_snapshot!(super::remote("ip6", &Some("localhost".to_string())),);
     }
 }

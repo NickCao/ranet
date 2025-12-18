@@ -34,9 +34,6 @@ mod test {
     #[test]
     fn encode_identity() {
         let identity = super::encode_identity("acme organization", "some server", "0").unwrap();
-        assert_eq!(
-            identity,
-            "asn1dn:#303e311a3018060355040a0c1161636d65206f7267616e697a6174696f6e3114301206035504030c0b736f6d6520736572766572310a30080603550405130130",
-        );
+        insta::assert_yaml_snapshot!(identity);
     }
 }

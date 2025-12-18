@@ -1,0 +1,5 @@
+---
+source: src/address.rs
+expression: "super::local(\"ip4\", &None)"
+---
+- 0.0.0.0/0

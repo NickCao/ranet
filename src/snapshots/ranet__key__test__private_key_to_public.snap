@@ -1,0 +1,5 @@
+---
+source: src/key.rs
+expression: public_key
+---
+"-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA29QaBk/rDPEAeC0nkc4agVCCCPh+D5eco9NoEX4CljU=\n-----END PUBLIC KEY-----\n"

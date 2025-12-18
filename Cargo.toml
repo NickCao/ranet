@@ -25,3 +25,6 @@ base64 = "*"
 
 [profile.release]
 lto = true
+
+[dev-dependencies]
+insta = { version = "1.45.0", features = ["yaml"] }

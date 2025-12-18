@@ -1,0 +1,5 @@
+---
+source: src/address.rs
+expression: "super::local(\"ip6\", &Some(\"fd00::/8\".to_string()))"
+---
+- "fd00::/8"

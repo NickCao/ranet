@@ -1,0 +1,5 @@
+---
+source: src/address.rs
+expression: "super::remote(\"invalid\", &None)"
+---
+[]

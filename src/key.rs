@@ -24,13 +24,6 @@ mod test {
 
         let public_key = super::private_key_to_public(private_key).unwrap();
 
-        assert_eq!(
-            public_key,
-            indoc! {"
-            -----BEGIN PUBLIC KEY-----
-            MCowBQYDK2VwAyEA29QaBk/rDPEAeC0nkc4agVCCCPh+D5eco9NoEX4CljU=
-            -----END PUBLIC KEY-----
-            "}
-        );
+        insta::assert_yaml_snapshot!(public_key);
     }
 }

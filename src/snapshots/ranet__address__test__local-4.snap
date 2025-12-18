@@ -1,0 +1,5 @@
+---
+source: src/address.rs
+expression: "super::local(\"ip4\", &Some(\"127.0.0.1\".to_string()))"
+---
+- 127.0.0.1

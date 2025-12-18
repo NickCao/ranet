@@ -1,8 +1,8 @@
-use serde::{de::IgnoredAny, Deserialize};
+use serde::{de::IgnoredAny, Deserialize, Serialize};
 
 pub type Registry = Vec<Organization>;
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Organization {
     pub public_key: String,
@@ -10,15 +10,16 @@ pub struct Organization {
     pub nodes: Vec<Node>,
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Node {
     pub common_name: String,
     pub endpoints: Vec<Endpoint>,
+    #[serde(default, skip_serializing)]
     pub remarks: Option<IgnoredAny>,
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Endpoint {
     pub serial_number: String,
@@ -66,30 +67,6 @@ mod test {
 
         let value: Registry = serde_json::from_str(data).unwrap();
 
-        assert_eq!(
-            value,
-            vec![Organization {
-                public_key: "<PEM encoded public key>".to_string(),
-                organization: "nickcao".to_string(),
-                nodes: vec![Node {
-                    common_name: "nrt0".to_string(),
-                    endpoints: vec![
-                        Endpoint {
-                            serial_number: "0".to_string(),
-                            address_family: "ip4".to_string(),
-                            address: None,
-                            port: 3000
-                        },
-                        Endpoint {
-                            serial_number: "1".to_string(),
-                            address_family: "ip6".to_string(),
-                            address: Some("nrt0.nichi.link".to_string()),
-                            port: 4000
-                        }
-                    ],
-                    remarks: Some(IgnoredAny)
-                }]
-            }]
-        )
+        insta::assert_yaml_snapshot!(value);
     }
 }
