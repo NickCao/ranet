@@ -17,7 +17,7 @@ indoc = "*"
 tracing = { version = "*" }
 tracing-subscriber = { version = "*", features = [ "env-filter" ] }
 futures = "*"
-const-oid = { version = "0.9.6", features = ["db"] }
+const-oid = { version = "*", features = ["db"] }
 x509-cert = "*"
 ed25519-dalek = { version = "*", features = ["pkcs8", "pem"] }
 sha2 = "*"
@@ -27,4 +27,4 @@ base64 = "*"
 lto = true
 
 [dev-dependencies]
-insta = { version = "1.45.0", features = ["yaml"] }
+insta = { version = "*", features = ["yaml"] }
