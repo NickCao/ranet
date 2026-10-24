@@ -185,6 +185,7 @@ struct Child {
     set_mark_out: String,
     start_action: &'static str,
     close_action: &'static str,
+    replay_window: &'static str,
 }
 
 #[derive(Debug, Serialize)]
@@ -269,6 +270,7 @@ impl Connection {
                     set_mark_out: fwmark.unwrap_or_default(),
                     start_action: if experimental.trap { "trap" } else { "none" },
                     close_action: "none",
+                    replay_window: "4096",
                 },
             )]),
         }
