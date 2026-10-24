@@ -9,6 +9,7 @@ use tracing::{debug, debug_span, info, warn};
 pub mod address;
 pub mod asn;
 pub mod config;
+mod interface_id;
 pub mod key;
 pub mod registry;
 pub mod vici;
@@ -72,7 +73,13 @@ pub async fn reconcile(
 
     let mut desired = HashSet::<String>::default();
 
-    for local in &config.endpoints {
+    // Allocate collision-resolved names and interface IDs in a canonical order.
+    let mut locals: Vec<_> = config.endpoints.iter().collect();
+    locals.sort_by_key(|local| &local.serial_number);
+    let mut organizations: Vec<_> = registry.iter().collect();
+    organizations.sort_by_key(|org| &org.organization);
+
+    for local in locals {
         let _span_local = debug_span!("local").entered();
 
         let local_id = asn::encode_identity(
@@ -88,16 +95,20 @@ pub async fn reconcile(
         );
 
         let local_addrs = address::local(&local.address_family, &local.address);
-        for organization in registry {
+        for organization in &organizations {
             let _span_organization = debug_span!("org", name = organization.organization).entered();
 
-            for node in &organization.nodes {
+            let mut nodes: Vec<_> = organization.nodes.iter().collect();
+            nodes.sort_by_key(|node| &node.common_name);
+            for node in nodes {
                 let _span_node = debug_span!("node", cn = node.common_name).entered();
 
                 if node.common_name == config.common_name {
                     continue;
                 }
-                for remote in &node.endpoints {
+                let mut remotes: Vec<_> = node.endpoints.iter().collect();
+                remotes.sort_by_key(|remote| &remote.serial_number);
+                for remote in remotes {
                     let _span_endpoint =
                         debug_span!("endpoint", sn = remote.serial_number).entered();
 
@@ -114,7 +125,7 @@ pub async fn reconcile(
 
                     let remote_addrs = address::remote(&remote.address_family, &remote.address);
                     let name =
-                        generate_name(&desired, format!("{}-{}", &local_id, &remote_id).as_bytes());
+                        generate_name(&desired, format!("{}-{}", local_id, remote_id).as_bytes());
                     desired.insert(name.clone());
                     let result = client
                         .load_conn(
@@ -150,7 +161,7 @@ pub async fn reconcile(
         }
     }
 
-    let current = HashSet::<String>::from_iter(client.get_conns().await?.into_iter());
+    let current = HashSet::<String>::from_iter(client.get_conns().await?);
 
     for conn in current.difference(&desired) {
         client.unload_conn(conn).await?;

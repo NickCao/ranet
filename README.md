@@ -4,6 +4,20 @@
 
 ranet, acronym for redundant array of networks, forms full mesh IPSec connectivity among network participants.
 
+#### XFRM interface IDs
+
+Each connection uses the same numeric `if_id_in` and `if_id_out`, derived from
+SHA-256 of its full local and remote endpoint identities. Addresses, ports,
+public keys, and registry ordering do not form part of the hash input.
+
+Connections are processed in a canonical order. If an ID is occupied, ranet
+assigns the next free ID, wrapping around and skipping zero and strongSwan's
+reserved `%unique`/`%unique-dir` values. The same identity set reconstructs the
+same assignments without a state file. Adding or removing colliding identities
+can change the IDs assigned within that collision group.
+
+New IKE_SAs use these IDs; existing SAs retain their IDs until re-established.
+
 #### Configuration
 
 ```json5

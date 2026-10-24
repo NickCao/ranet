@@ -1,4 +1,5 @@
 use crate::error::Error;
+use crate::interface_id::InterfaceIds;
 use futures::TryStreamExt;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, path::Path};
@@ -6,12 +7,16 @@ use tracing::debug;
 
 pub struct Client {
     client: rsvici::Client,
+    interface_ids: InterfaceIds,
 }
 
 impl Client {
     pub async fn connect<P: AsRef<Path>>(path: P) -> Result<Self, Error> {
         let client = rsvici::unix::connect(path).await?;
-        Ok(Self { client })
+        Ok(Self {
+            client,
+            interface_ids: InterfaceIds::default(),
+        })
     }
     pub async fn version(&mut self) -> Result<semver::Version, Error> {
         let v: Version = self.client.request("version", ()).await?;
@@ -35,7 +40,8 @@ impl Client {
         fwmark: Option<String>,
         iptfs: bool,
     ) -> Result<(), Error> {
-        let conn = Connection::new(local, remote, updown, fwmark, iptfs);
+        let interface_id = self.interface_ids.allocate(&local.id, &remote.id);
+        let conn = Connection::new(local, remote, updown, fwmark, iptfs, interface_id);
         let resp: Status = self
             .client
             .request("load-conn", HashMap::from([(name, conn)]))
@@ -201,8 +207,8 @@ struct Connection {
     dpd_delay: u64,
     keyingtries: u32,
     unique: &'static str,
-    if_id_in: &'static str,
-    if_id_out: &'static str,
+    if_id_in: u32,
+    if_id_out: u32,
     local: Authentication,
     remote: Authentication,
     children: HashMap<&'static str, Child>,
@@ -222,6 +228,7 @@ impl Connection {
         updown: Option<String>,
         fwmark: Option<String>,
         iptfs: bool,
+        interface_id: u32,
     ) -> Self {
         Self {
             version: 2,
@@ -234,8 +241,8 @@ impl Connection {
             dpd_delay: 10,
             keyingtries: 0,
             unique: "replace",
-            if_id_in: "%unique",
-            if_id_out: "%unique",
+            if_id_in: interface_id,
+            if_id_out: interface_id,
             local: Authentication {
                 auth: "pubkey",
                 pubkeys: vec![local.pubkey],
@@ -259,6 +266,39 @@ impl Connection {
                     close_action: "none",
                 },
             )]),
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn serializes_fixed_interface_ids_without_changing_initiation() {
+        for iptfs in [false, true] {
+            let endpoint = |id: &str| Endpoint {
+                id: id.to_owned(),
+                addrs: vec!["192.0.2.1".to_owned()],
+                port: 13000,
+                pubkey: "public-key".to_owned(),
+            };
+            let conn = Connection::new(
+                endpoint("local"),
+                endpoint("remote"),
+                Some("/usr/local/bin/updown".to_owned()),
+                Some("123".to_owned()),
+                iptfs,
+                u32::MAX - 2,
+            );
+            let value = serde_json::to_value(conn).unwrap();
+            assert_eq!(value["if_id_in"], u32::MAX - 2);
+            assert_eq!(value["if_id_out"], u32::MAX - 2);
+            let child = &value["children"]["default"];
+            assert_eq!(child["mode"], if iptfs { "iptfs" } else { "tunnel" });
+            assert_eq!(child["updown"], "/usr/local/bin/updown");
+            assert_eq!(child["set_mark_out"], "123");
+            assert_eq!(child["start_action"], "none");
         }
     }
 }
