@@ -144,7 +144,7 @@ pub async fn reconcile(
                             },
                             local.updown.clone(),
                             local.fwmark.clone(),
-                            config.experimental.iptfs,
+                            &config.experimental,
                         )
                         .await;
 
@@ -155,7 +155,9 @@ pub async fn reconcile(
 
                     info!("loaded connection");
 
-                    client.initiate(&name).await?;
+                    if !config.experimental.trap {
+                        client.initiate(&name).await?;
+                    }
                 }
             }
         }

@@ -1,3 +1,4 @@
+use crate::config::Experimental;
 use crate::error::Error;
 use crate::interface_id::InterfaceIds;
 use futures::TryStreamExt;
@@ -38,10 +39,10 @@ impl Client {
         remote: Endpoint,
         updown: Option<String>,
         fwmark: Option<String>,
-        iptfs: bool,
+        experimental: &Experimental,
     ) -> Result<(), Error> {
         let interface_id = self.interface_ids.allocate(&local.id, &remote.id);
-        let conn = Connection::new(local, remote, updown, fwmark, iptfs, interface_id);
+        let conn = Connection::new(local, remote, updown, fwmark, experimental, interface_id);
         let resp: Status = self
             .client
             .request("load-conn", HashMap::from([(name, conn)]))
@@ -227,7 +228,7 @@ impl Connection {
         remote: Endpoint,
         updown: Option<String>,
         fwmark: Option<String>,
-        iptfs: bool,
+        experimental: &Experimental,
         interface_id: u32,
     ) -> Self {
         Self {
@@ -259,10 +260,14 @@ impl Connection {
                     local_ts: vec!["0.0.0.0/0".to_string(), "::/0".to_string()],
                     remote_ts: vec!["0.0.0.0/0".to_string(), "::/0".to_string()],
                     updown: updown.unwrap_or_default(),
-                    mode: if iptfs { "iptfs" } else { "tunnel" },
+                    mode: if experimental.iptfs {
+                        "iptfs"
+                    } else {
+                        "tunnel"
+                    },
                     dpd_action: "restart",
                     set_mark_out: fwmark.unwrap_or_default(),
-                    start_action: "none",
+                    start_action: if experimental.trap { "trap" } else { "none" },
                     close_action: "none",
                 },
             )]),
@@ -288,7 +293,10 @@ mod test {
                 endpoint("remote"),
                 Some("/usr/local/bin/updown".to_owned()),
                 Some("123".to_owned()),
-                iptfs,
+                &Experimental {
+                    iptfs,
+                    ..Experimental::default()
+                },
                 u32::MAX - 2,
             );
             let value = serde_json::to_value(conn).unwrap();

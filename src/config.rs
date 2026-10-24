@@ -27,4 +27,6 @@ pub struct Endpoint {
 pub struct Experimental {
     #[serde(default)]
     pub iptfs: bool,
+    #[serde(default)]
+    pub trap: bool,
 }

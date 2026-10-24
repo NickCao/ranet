@@ -41,9 +41,18 @@ New IKE_SAs use these IDs; existing SAs retain their IDs until re-established.
       "updown": "/usr/local/bin/updown",
       "fwmark": null
     }
-  ]
+  ],
+  "experimental": {
+    "trap": false // set true to install trap policies and skip immediate initiation
+  }
 }
 ```
+
+`experimental.trap` applies to all connections and defaults to `false`, keeping
+immediate initiation. When enabled, ranet loads connections with
+`start_action = trap` and skips immediate initiation. Trap policies and active
+SAs share the stable XFRM interface ID described above. Automatic restart after
+DPD is enabled in both modes.
 
 #### Registry
 
